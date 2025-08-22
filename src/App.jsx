@@ -6,12 +6,14 @@ import {
   View,
   Grid,
   Divider,
+  Authenticator
 } from '@aws-amplify/ui-react';
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import {Amplify} from 'aws-amplify';
 import "@aws-amplify/ui-react/styles.css";
 import { generateClient } from 'aws-amplify/data';
 import outputs from "../amplify_outputs.json";
+import HomePage from './HomePage';
 /**
  * @type {import('aws-amplify/data').Client<ImportAttributes('../amplify/data/resource').Schema>}
  */
@@ -21,9 +23,8 @@ const client = generateClient({
   authMode: "userPool",
 });
 
-export default function App() {
+function AuthenticatedApp({signOut}) {
   const [userprofiles, setUserProfiles] = useState([]);
-  const { signOut } = useAuthenticator((context) => [context.user]);
 
   useEffect(() => {
     fetchUserProfile();
@@ -36,10 +37,10 @@ export default function App() {
 
   return (
     <Flex
-      className="App"
-      justifyContent="center"
+      className='App'
+      justifyContent='center'
       alignItems="center"
-      direction="column"
+      direction= "column"
       width="70%"
       margin="0 auto"
     >
@@ -52,26 +53,54 @@ export default function App() {
         justifyContent="center"
         gap="2rem"
         alignContent="center"
-        >
-          {userprofiles.map((userprofile)=> (
-            <Flex
-              key={userprofile.id || userprofile.email}
-              direction = "column"
-              justifyContent="center"
-              alignItems="center"
-              gap="2rem"
-              border="1px solid #ccc"
-              padding="2rem"
-              borderRadius="5%"
-              className="box"
-            >
-              <View>
-                <Heading level="3">{userprofile.name}</Heading>
-              </View>
-            </Flex>
-          ))}
-        </Grid>
-        <Button onClick={signOut}>Sign Out</Button>
+      >
+        {userprofiles.map((userprofile) => (
+          <Flex
+            key={userprofile.id || userprofile.email}
+            direction="column"
+            justifyContent="center"
+            alignItems="center"
+            gap="2rem"
+            border="1px solid #ccc"
+            padding="2rem"
+            borderRadius="5%"
+             className="box"
+          >
+            <View>
+              <Heading level="3">{userprofile.name}</Heading>
+            </View>
+          </Flex>
+        ))}
+      </Grid>
+      <Button onClick={signOut}>Sign Out</Button>
     </Flex>
+  );
+}
+
+export default function App() {
+  const [showLogin, setShowLogin] = useState(false);
+  
+  // Se vogliamo mostrare il login
+  if (showLogin) {
+    return (
+      <Authenticator>
+        {({ signOut, user }) => {
+          console.log('Authenticator render - user:', user); // DEBUG
+          return user ? (
+            <AuthenticatedApp signOut={signOut} />
+          ) : (
+            <div>Loading login form...</div> // DEBUG: mostra qualcosa mentre carica
+          );
+        }}
+      </Authenticator>
+    );
+  }
+
+  // Homepage pubblica
+  return (
+      <HomePage onLoginClick={() => {
+      console.log('Login button clicked!'); // DEBUG
+      setShowLogin(true);
+    }} />
   );
 }

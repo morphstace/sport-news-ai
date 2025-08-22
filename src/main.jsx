@@ -6,8 +6,6 @@ import { Authenticator } from '@aws-amplify/ui-react';
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <Authenticator>
-      <App />
-    </Authenticator>
+   <App />
   </React.StrictMode>
 );
