@@ -12,7 +12,6 @@ import {Amplify} from 'aws-amplify';
 import "@aws-amplify/ui-react/styles.css";
 import { generateClient } from 'aws-amplify/data';
 import outputs from "../amplify_outputs.json";
-import { context } from 'esbuild';
 /**
  * @type {import('aws-amplify/data').Client<ImportAttributes('../amplify/data/resource').Schema>}
  */
