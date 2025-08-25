@@ -8,7 +8,7 @@ import { createUserProfile } from './graphql/mutations';
 Amplify.configure({
     API: {
         GraphQL: {
-            endpoint: env.AMPLIFY_DATA_GRAPHQL_ENDPOINT,
+            endpoint: process.env.AMPLIFY_DATA_GRAPHQL_ENDPOINT!,
             region: env.AWS_REGION,
             defaultAuthMode: "iam",
         },

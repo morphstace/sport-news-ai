@@ -15,6 +15,7 @@ import { generateClient } from 'aws-amplify/data';
 import outputs from "../amplify_outputs.json";
 import HomePage from './HomePage';
 import PostEditor from './PostEditor';
+import PostList from './PostList';
 /**
  * @type {import('aws-amplify/data').Client<ImportAttributes('../amplify/data/resource').Schema>}
  */
@@ -27,6 +28,7 @@ const client = generateClient({
 function AuthenticatedApp({signOut}) {
   const [userprofiles, setUserProfiles] = useState([]);
   const [showPostEditor, setShowPostEditor] = useState(false);
+  const [showPostList, setShowPostList] = useState(false);
 
   useEffect(() => {
     fetchUserProfile();
@@ -46,6 +48,19 @@ function AuthenticatedApp({signOut}) {
     )
   }
 
+  if (showPostList) {
+    return (
+      <PostList
+        onBack={() => setShowPostList(false)}
+        onCreateNew={() => {
+          setShowPostList(false);
+          setShowPostEditor(true);
+        }}
+        signOut={signOut}
+      />
+    )
+  }
+
   return (
     <Flex
       className='App'
@@ -59,7 +74,7 @@ function AuthenticatedApp({signOut}) {
 
       <Divider />
       {/**Sezione nagivation/actions */}
-      <Flex gap="1rem 0">
+      <Flex gap="1rem" margin="1rem 0">
         <Button
           variation='primary'
           onClick={() => setShowPostEditor(true)}
@@ -68,7 +83,7 @@ function AuthenticatedApp({signOut}) {
         </Button>
         <Button
           variation="outline"
-          onClick={() => console.log('Manage Posts')}
+          onClick={() => setShowPostList(true)}
         >
           Manage Posts
         </Button>

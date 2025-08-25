@@ -10,16 +10,29 @@ and "delete" any "Todo" records.
 =========================================================================*/
 const schema = a.schema({
   UserProfile: a
-    .model({
-      email: a.string(),
-      profileOwner: a.string(),
-    })
-    .authorization((allow) => [allow.ownerDefinedIn("profileOwner"),
-    ]),
-})
-.authorization((allow) => [allow.resource(postConfirmation)]);
-export type Schema = ClientSchema<typeof schema>;
+  .model({
+    email: a.string(),
+    profileOwner: a.string(),
+  })
+  .authorization((allow) => [allow.ownerDefinedIn("profileOwner"),
+  ]),
 
+  Post: a
+    .model({
+      title: a.string().required(),
+      content: a.string().required(),
+      category: a.string().required(),
+      tags: a.string(),
+      publishedAt: a.datetime().required(),
+      authorId: a.string().required(),
+  })
+  .authorization((allow) => [allow.owner(),
+    allow.authenticated().to(['read']),
+    allow.guest().to(['read'])
+  ]),
+});
+
+export type Schema = ClientSchema<typeof schema>;
 
 export const data = defineData({
   schema,
