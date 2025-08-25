@@ -1,4 +1,4 @@
-import { use, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import {
     Button,
     Heading,
@@ -14,7 +14,7 @@ import { getCurrentUser } from 'aws-amplify/auth';
 
 const client = generateClient({ authMode: "userPool" });
 
-export default function PostEditor({ onBack, signOut }) {
+export default function PostEditor({ onBack, signOut, editingPost = null }) {
     const [post, setPost] = useState({
         title: '',
         content: '',
@@ -26,6 +26,18 @@ export default function PostEditor({ onBack, signOut }) {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
+    const isEditing = !!editingPost;
+    useEffect(() => {
+        if (editingPost) {
+            setPost({
+                title: editingPost.title,
+                content: editingPost.content,
+                category: editingPost.category,
+                tags: editingPost.tags
+            });
+        }
+    }, [editingPost]);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
@@ -33,16 +45,29 @@ export default function PostEditor({ onBack, signOut }) {
         setSuccess('');
         try {
             const user = await getCurrentUser();
-            const result = await client.models.Post.create({
-                title: post.title,
-                content: post.content,
-                category: post.category,
-                tags: post.tags,
+            
+            if(isEditing){
+                const result = await client.models.Post.update({
+                    id: editingPost.id,
+                    title: post.title,
+                    content: post.content,
+                    category: post.category,
+                    tags: post.tags
+                });
+                console.log('Post updated:', result);
+                setSuccess('Post updated successfully!');
+            }else{
+                const result = await client.models.Post.create({
+                    title: post.title,
+                    content: post.content,
+                    category: post.category,
+                    tags: post.tags,
                 publishedAt: new Date().toISOString(),
                 authorId: user.userId
             });
             console.log('Post created:', result);
             setSuccess('Post created successfully!');
+            }
             
             //reset
             setPost({

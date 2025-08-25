@@ -16,7 +16,7 @@ import { cognitoUserPoolsTokenProvider } from 'aws-amplify/auth/cognito';
 
 const client = generateClient({ authMode: "userPool" });
 
-export default function PostList({ onBack, onCreateNew, signOut }) {
+export default function PostList({ onBack, onCreateNew, onEditPost, signOut }) {
     const [posts, setPosts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
@@ -184,7 +184,7 @@ export default function PostList({ onBack, onCreateNew, signOut }) {
                                 <Button 
                                     size="small" 
                                     variation="link"
-                                    onClick={() => console.log('Edit post:', post.id)}
+                                    onClick={() => onEditPost(post)}
                                 >
                                     Edit
                                 </Button>
