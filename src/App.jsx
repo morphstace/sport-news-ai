@@ -14,6 +14,7 @@ import "@aws-amplify/ui-react/styles.css";
 import { generateClient } from 'aws-amplify/data';
 import outputs from "../amplify_outputs.json";
 import HomePage from './HomePage';
+import PostEditor from './PostEditor';
 /**
  * @type {import('aws-amplify/data').Client<ImportAttributes('../amplify/data/resource').Schema>}
  */
@@ -25,6 +26,7 @@ const client = generateClient({
 
 function AuthenticatedApp({signOut}) {
   const [userprofiles, setUserProfiles] = useState([]);
+  const [showPostEditor, setShowPostEditor] = useState(false);
 
   useEffect(() => {
     fetchUserProfile();
@@ -33,6 +35,15 @@ function AuthenticatedApp({signOut}) {
   async function fetchUserProfile() {
    const { data: profiles } = await client.models.UserProfile.list();
    setUserProfiles(profiles);
+  }
+
+  if (showPostEditor) {
+    return (
+      <PostEditor
+        onBack={() => setShowPostEditor(false)}
+        signOut={signOut}
+      />
+    )
   }
 
   return (
@@ -47,6 +58,21 @@ function AuthenticatedApp({signOut}) {
       <Heading level={1}> My Profile</Heading>
 
       <Divider />
+      {/**Sezione nagivation/actions */}
+      <Flex gap="1rem 0">
+        <Button
+          variation='primary'
+          onClick={() => setShowPostEditor(true)}
+        >
+          Create New Post
+        </Button>
+        <Button
+          variation="outline"
+          onClick={() => console.log('Manage Posts')}
+        >
+          Manage Posts
+        </Button>
+      </Flex>
       <Grid
         margin="3rem 0"
         autoFlow="column"
@@ -85,7 +111,6 @@ export default function App() {
     return (
       <Authenticator>
         {({ signOut, user }) => {
-          console.log('Authenticator render - user:', user); // DEBUG
           return user ? (
             <AuthenticatedApp signOut={signOut} />
           ) : (
@@ -99,7 +124,6 @@ export default function App() {
   // Homepage pubblica
   return (
       <HomePage onLoginClick={() => {
-      console.log('Login button clicked!'); // DEBUG
       setShowLogin(true);
     }} />
   );
