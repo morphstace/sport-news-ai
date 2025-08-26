@@ -25,7 +25,7 @@ const client = generateClient({
 
 function AuthenticatedApp({signOut, user}) {
   const [userprofiles, setUserProfiles] = useState([]);
-  const [currentPage, setCurrentPage] = useState('profile');
+  const [currentPage, setCurrentPage] = useState('profile'); // Cambia default in 'home'
 
   useEffect(() => {
     fetchUserProfile();
@@ -36,12 +36,9 @@ function AuthenticatedApp({signOut, user}) {
    setUserProfiles(profiles);
   }
 
+  // Funzione per gestire la navigazione
   const handleNavigation = (page) => {
     setCurrentPage(page);
-  };
-
-  const goToHome = () => {
-    signOut();
   };
 
   return (
@@ -57,6 +54,11 @@ function AuthenticatedApp({signOut, user}) {
 
       {/* Contenuto principale */}
       <Flex flex="1">
+        {/* AGGIUNGI QUESTA CONDIZIONE PER LA HOME */}
+        {currentPage === 'home' && (
+          <HomePage onLoginClick={() => {}} />
+        )}
+
         {currentPage === 'create' && (
           <PostEditor
             onBack={() => setCurrentPage('posts')}
@@ -70,7 +72,6 @@ function AuthenticatedApp({signOut, user}) {
             onBack={() => setCurrentPage('profile')}
             onCreateNew={() => setCurrentPage('create')}
             onEditPost={(post) => {
-              // Per ora torniamo al create, potrai aggiungere edit dopo
               setCurrentPage('create');
             }}
             signOut={signOut}
@@ -147,7 +148,47 @@ export default function App() {
   // Se vogliamo mostrare il login
   if (showLogin) {
     return (
-      <Authenticator>
+      <Authenticator
+        signUpAttributes={[
+          'email',
+          'given_name',    // Nome
+          'family_name'    // Cognome
+        ]}
+        formFields={{
+          signUp: {
+            given_name: {
+              label: 'Nome *',
+              placeholder: 'Inserisci il tuo nome',
+              isRequired: true,
+              order: 1
+            },
+            family_name: {
+              label: 'Cognome *',
+              placeholder: 'Inserisci il tuo cognome', 
+              isRequired: true,
+              order: 2
+            },
+            email: {
+              label: 'Email *',
+              placeholder: 'Inserisci la tua email',
+              isRequired: true,
+              order: 3
+            },
+            password: {
+              label: 'Password *',
+              placeholder: 'Inserisci una password sicura',
+              isRequired: true,
+              order: 4
+            },
+            confirm_password: {
+              label: 'Conferma Password *',
+              placeholder: 'Conferma la password',
+              isRequired: true,
+              order: 5
+            }
+          }
+        }}
+      >
         {({ signOut, user }) => {
           return user ? (
             <AuthenticatedApp signOut={signOut} user={user} />

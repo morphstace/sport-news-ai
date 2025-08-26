@@ -5,20 +5,21 @@ export default function Navbar({ user, onLoginClick, onSignOut, onNavigate, curr
     <Flex
       as="nav"
       padding="1rem 2rem"
-      backgroundColor="var(--amplify-colors-background-secondary)"
-      borderBottom="1px solid var(--amplify-colors-border-primary)"
+      backgroundColor="#343a40" // Grigio scuro
+      borderBottom="1px solid #495057"
       justifyContent="space-between"
       alignItems="center"
       position="sticky"
       top="0"
       zIndex="100"
+      boxShadow="0 2px 8px rgba(0,0,0,0.2)"
     >
       {/* Logo/Brand */}
       <Flex alignItems="center" gap="1rem">
         <Heading 
           level={3} 
           margin="0"
-          color="var(--amplify-colors-brand-primary-80)"
+          color="#ffc107" // Giallo/oro
           style={{ cursor: 'pointer' }}
           onClick={() => onNavigate('home')}
         >
@@ -26,24 +27,30 @@ export default function Navbar({ user, onLoginClick, onSignOut, onNavigate, curr
         </Heading>
       </Flex>
 
-      {/* Navigation Links - Solo per utenti autenticati */}
+      {/* Navigation Links */}
       {user && (
         <Flex gap="1rem" alignItems="center">
           <Button
-            variation={currentPage === 'profile' ? 'primary' : 'link'}
+            variation="link"
             onClick={() => onNavigate('profile')}
+            color={currentPage === 'profile' ? '#ffc107' : '#fff'}
+            fontWeight={currentPage === 'profile' ? '600' : '400'}
           >
             Profile
           </Button>
           <Button
-            variation={currentPage === 'posts' ? 'primary' : 'link'}
+            variation="link"
             onClick={() => onNavigate('posts')}
+            color={currentPage === 'posts' ? '#ffc107' : '#fff'}
+            fontWeight={currentPage === 'posts' ? '600' : '400'}
           >
             My Posts
           </Button>
           <Button
-            variation={currentPage === 'create' ? 'primary' : 'link'}
+            variation="link"
             onClick={() => onNavigate('create')}
+            color={currentPage === 'create' ? '#ffc107' : '#fff'}
+            fontWeight={currentPage === 'create' ? '600' : '400'}
           >
             Create Post
           </Button>
@@ -54,15 +61,31 @@ export default function Navbar({ user, onLoginClick, onSignOut, onNavigate, curr
       <Flex alignItems="center" gap="1rem">
         {user ? (
           <>
-            <Text fontSize="small" color="var(--amplify-colors-font-secondary)">
+            <Text 
+              fontSize="small" 
+              color="#adb5bd"
+              fontWeight="500"
+            >
               Welcome, {user.username}
             </Text>
-            <Button variation="outline" onClick={onSignOut}>
+            <Button 
+              variation="outline" 
+              onClick={onSignOut}
+              borderColor="#dc3545"
+              color="#dc3545"
+              backgroundColor="transparent"
+            >
               Sign Out
             </Button>
           </>
         ) : (
-          <Button variation="primary" onClick={onLoginClick}>
+          <Button 
+            variation="primary" 
+            onClick={onLoginClick}
+            backgroundColor="#ffc107"
+            color="#000"
+            fontWeight="600"
+          >
             Sign In
           </Button>
         )}
