@@ -159,18 +159,6 @@ export default function HomePage({ onLoginClick }) {
           </Flex>
         )}
       </Flex>
-
-      {/* Call to Action */}
-      <Divider />
-      <Card padding="2rem" textAlign="center" backgroundColor="var(--amplify-colors-background-secondary)">
-        <Heading level={3} marginBottom="1rem">Join Our Community</Heading>
-        <Text marginBottom="1.5rem">
-          Sign in to create your own sports news, follow your favorite teams, and get personalized updates.
-        </Text>
-        <Button variation="primary" size="large" onClick={onLoginClick}>
-          Get Started Today
-        </Button>
-      </Card>
     </Flex>
   );
 }

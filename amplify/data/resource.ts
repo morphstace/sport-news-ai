@@ -10,11 +10,14 @@ and "delete" any "Todo" records.
 =========================================================================*/
 const schema = a.schema({
   UserProfile: a
-  .model({
-    email: a.string(),
-    profileOwner: a.string(),
-  })
-  .authorization((allow) => [allow.ownerDefinedIn("profileOwner"),
+    .model({
+      email: a.string(),
+      name: a.string(),           // Nome completo
+      firstName: a.string(),      // NUOVO: Nome
+      lastName: a.string(),       // NUOVO: Cognome
+      profileOwner: a.string(),
+    })
+    .authorization((allow) => [allow.ownerDefinedIn("profileOwner"),
   ]),
 
   Post: a

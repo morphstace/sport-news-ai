@@ -2,14 +2,12 @@ import type { PostConfirmationTriggerHandler } from 'aws-lambda';
 import { type Schema } from "../../data/resource";
 import { Amplify } from 'aws-amplify';
 import { generateClient } from 'aws-amplify/data';
-import { env } from "$amplify/env/postConfirmation";
-import { createUserProfile } from './graphql/mutations';
 
 Amplify.configure({
     API: {
         GraphQL: {
             endpoint: process.env.AMPLIFY_DATA_GRAPHQL_ENDPOINT!,
-            region: env.AWS_REGION,
+            region: process.env.AWS_REGION!,
             defaultAuthMode: "iam",
         },
     },
@@ -19,9 +17,9 @@ Amplify.configure({
         credentialsProvider: {
             getCredentialsAndIdentityId: async () => ({
                 credentials: {
-                    accessKeyId: env.AWS_ACCESS_KEY_ID,
-                    secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
-                    sessionToken: env.AWS_SESSION_TOKEN,
+                    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+                    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+                    sessionToken: process.env.AWS_SESSION_TOKEN!,
                 },
             }),
             clearCredentialsAndIdentityId: () => {
@@ -37,14 +35,32 @@ const client = generateClient<Schema>({
 });
 
 export const handler: PostConfirmationTriggerHandler = async (event) => {
-    await client.graphql({
-        query: createUserProfile,
-        variables: {
-            input: {
-                email: event.request.userAttributes.email,
-                profileOwner: `${event.request.userAttributes.sub}::${event.userName}`,
-            },
-        },
-    });
+    const { userAttributes } = event.request;
+    
+    const firstName = userAttributes.given_name || '';
+    const lastName = userAttributes.family_name || '';
+    const fullName = `${firstName} ${lastName}`.trim();
+    
+    try {
+        const result = await client.models.UserProfile.create({
+            email: userAttributes.email,
+            name: fullName || userAttributes.email,
+            firstName: firstName,
+            lastName: lastName,
+            profileOwner: `${userAttributes.sub}::${event.userName}`,
+        });
+        
+        console.log('User profile created successfully:', {
+            email: userAttributes.email,
+            name: fullName,
+            firstName,
+            lastName,
+            result: result.data
+        });
+        
+    } catch (error) {
+        console.error('Error creating user profile:', error);
+    }
+    
     return event;
 };
