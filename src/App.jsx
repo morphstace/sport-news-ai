@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { 
   Button,
   Heading,
@@ -32,17 +32,31 @@ function AuthenticatedApp({signOut, user}) {
   const [userRole, setUserRole] = useState('user');
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [userAttributes, setUserAttributes] = useState(null);
+  
+  // Ref per prevenire inizializzazioni multiple
+  const initializingRef = useRef(false);
 
   useEffect(() => {
-    initializeUserData();
+    if (!initializingRef.current) {
+      initializeUserData();
+    }
   }, [user]);
 
   async function initializeUserData() {
+    if (initializingRef.current) return;
+    initializingRef.current = true;
+
     try {
-      await fetchUserProfile();
-      const attributes = await getUserAttributes();
-      await checkAndCreateUserProfile(attributes);
+      // 1. Ottieni attributi utente
+      const attributes = await fetchUserAttributes();
+      
+      // 2. Carica profili esistenti
+      const { data: profiles } = await client.models.UserProfile.list();
+      setUserProfiles(profiles);
+      
+      // 3. Controlla/crea profilo utente
+      await ensureUserProfile(attributes, profiles);
+      
       setLoading(false);
     } catch (error) {
       console.error('Error initializing user data:', error);
@@ -50,72 +64,70 @@ function AuthenticatedApp({signOut, user}) {
     }
   }
 
-  async function fetchUserProfile() {
-    try {
-      const { data: profiles } = await client.models.UserProfile.list();
-      setUserProfiles(profiles);
-    } catch (error) {
-      console.error('Error fetching user profiles:', error);
-    }
-  }
-
-  async function getUserAttributes() {
-    try {
-      const attributes = await fetchUserAttributes();
-      setUserAttributes(attributes);
-      return attributes;
-    } catch (error) {
-      console.error('Error fetching user attributes:', error);
-      return null;
-    }
-  }
-
-  async function checkAndCreateUserProfile(attributes = null) {
-    const currentAttributes = attributes || userAttributes;
-    
-    if (!currentAttributes?.email && !user?.username) {
+  // FUNZIONE CONSOLIDATA: gestisce sia il controllo che la creazione
+  async function ensureUserProfile(attributes, existingProfiles) {
+    if (!attributes?.email && !user?.username) {
       console.error('No user email found');
       return;
     }
 
-    const userEmail = currentAttributes?.email || user?.username || '';
-    const userId = user?.userId || user?.username || currentAttributes?.sub || '';
+    const userEmail = attributes?.email || user?.username || '';
+    const userId = user?.userId || user?.username || attributes?.sub || '';
     
-    let existingProfile = userprofiles.find(profile => profile.email === userEmail);
-
-    // Se il profilo non esiste, crealo
-    if (!existingProfile) {
+    // Cerca profilo esistente
+    let userProfile = existingProfiles.find(profile => profile.email === userEmail);
+    
+    // Se non esiste, crealo
+    if (!userProfile) {
       try {
-        const givenName = currentAttributes?.given_name || '';
-        const familyName = currentAttributes?.family_name || '';
+        const givenName = attributes?.given_name || '';
+        const familyName = attributes?.family_name || '';
         const fullName = `${givenName} ${familyName}`.trim();
 
-        const newProfileData = {
+        const response = await client.models.UserProfile.create({
           email: userEmail,
           name: fullName || 'Utente',
           firstName: givenName,
           lastName: familyName,
           role: 'user',
           profileOwner: userId
-        };
-
-        const response = await client.models.UserProfile.create(newProfileData);
+        });
         
-        // Ricarica i profili
-        await fetchUserProfile();
-        existingProfile = response.data;
+        userProfile = response.data;
+        
+        // Aggiorna lo stato locale senza ricaricare tutto
+        setUserProfiles(prev => [...prev, userProfile]);
       } catch (error) {
         console.error('Error creating user profile:', error);
+        return;
       }
     }
 
-    if (existingProfile) {
-      setCurrentUserProfile(existingProfile);
-      setUserRole(existingProfile.role || 'user');
+    // Imposta profilo corrente e ruolo
+    setCurrentUserProfile(userProfile);
+    setUserRole(userProfile.role || 'user');
+  }
+
+  // FUNZIONE CONSOLIDATA: ricarica profili (solo quando necessario)
+  async function refreshUserProfiles() {
+    try {
+      const { data: profiles } = await client.models.UserProfile.list();
+      setUserProfiles(profiles);
+      
+      // Aggiorna anche il profilo corrente se necessario
+      if (currentUserProfile) {
+        const updatedProfile = profiles.find(p => p.id === currentUserProfile.id);
+        if (updatedProfile) {
+          setCurrentUserProfile(updatedProfile);
+          setUserRole(updatedProfile.role || 'user');
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing user profiles:', error);
     }
   }
 
-  // Funzione per aggiornare il ruolo di un utente (solo admin)
+  // Funzione per aggiornare il ruolo (semplificata)
   async function updateUserRole(profileId, newRole) {
     if (userRole !== 'admin') {
       alert('Solo gli amministratori possono modificare i ruoli');
@@ -128,10 +140,17 @@ function AuthenticatedApp({signOut, user}) {
         role: newRole
       });
       
-      await fetchUserProfile();
+      // Aggiorna lo stato locale
+      setUserProfiles(prev => 
+        prev.map(profile => 
+          profile.id === profileId 
+            ? { ...profile, role: newRole }
+            : profile
+        )
+      );
       
-      // Se stiamo aggiornando il nostro profilo, aggiorna anche il ruolo locale
-      if (currentUserProfile && currentUserProfile.id === profileId) {
+      // Se è il nostro profilo, aggiorna anche il ruolo locale
+      if (currentUserProfile?.id === profileId) {
         setUserRole(newRole);
         setCurrentUserProfile(prev => ({ ...prev, role: newRole }));
       }
@@ -143,11 +162,6 @@ function AuthenticatedApp({signOut, user}) {
     }
   }
 
-  // Funzione per gestire la navigazione
-  const handleNavigation = (page) => {
-    setCurrentPage(page);
-  };
-
   if (loading) {
     return (
       <Flex justifyContent="center" alignItems="center" minHeight="100vh">
@@ -158,17 +172,15 @@ function AuthenticatedApp({signOut, user}) {
 
   return (
     <Flex direction="column" minHeight="100vh">
-      {/* Navbar sempre presente */}
       <Navbar 
         user={user}
         userRole={userRole}
         onSignOut={signOut}
-        onNavigate={handleNavigation}
+        onNavigate={setCurrentPage}
         currentPage={currentPage}
         onLoginClick={() => {}}
       />
 
-      {/* Contenuto principale */}
       <Flex flex="1">
         {currentPage === 'home' && (
           <HomePage onLoginClick={() => {}} />
@@ -186,20 +198,17 @@ function AuthenticatedApp({signOut, user}) {
           <PostList
             onBack={() => setCurrentPage('profile')}
             onCreateNew={() => setCurrentPage('create')}
-            onEditPost={(post) => {
-              setCurrentPage('create');
-            }}
+            onEditPost={() => setCurrentPage('create')}
             signOut={signOut}
           />
         )}
 
-        {/* Pannello Admin (solo per admin) */}
         {currentPage === 'admin' && userRole === 'admin' && (
           <AdminPanel
             userProfiles={userprofiles}
             currentUserRole={userRole}
             onUpdateRole={updateUserRole}
-            onRefresh={fetchUserProfile}
+            onRefresh={refreshUserProfiles}
           />
         )}
 
@@ -208,14 +217,13 @@ function AuthenticatedApp({signOut, user}) {
             className='App'
             justifyContent='center'
             alignItems="center"
-            direction= "column"
+            direction="column"
             width="70%"
             margin="0 auto"
             padding="2rem"
           >
             <Heading level={1}>My Profile</Heading>
             
-            {/* Mostra ruolo corrente */}
             <Alert 
               variation={userRole === 'admin' ? 'success' : 'info'} 
               margin="1rem 0"
@@ -226,7 +234,6 @@ function AuthenticatedApp({signOut, user}) {
 
             <Divider />
             
-            {/* Quick Actions */}
             <Flex gap="1rem" margin="1rem 0" wrap="wrap" justifyContent="center">
               <Button
                 variation='primary'
@@ -240,7 +247,6 @@ function AuthenticatedApp({signOut, user}) {
               >
                 Manage Posts
               </Button>
-              {/* Pulsante Admin Panel solo per admin */}
               {userRole === 'admin' && (
                 <Button
                   variation="destructive"
@@ -253,7 +259,6 @@ function AuthenticatedApp({signOut, user}) {
             
             <Divider />
             
-            {/* Profilo utente corrente */}
             {currentUserProfile ? (
               <Flex
                 direction="column"
@@ -269,43 +274,14 @@ function AuthenticatedApp({signOut, user}) {
               >
                 <Heading level="3">{currentUserProfile.name}</Heading>
                 <View><strong>Email:</strong> {currentUserProfile.email}</View>
-                <View>
-                  <strong>Nome:</strong> {currentUserProfile.firstName || 'N/A'}
-                </View>
-                <View>
-                  <strong>Cognome:</strong> {currentUserProfile.lastName || 'N/A'}
-                </View>
-                <View>
-                  <strong>Ruolo:</strong> {currentUserProfile.role === 'admin' ? 'Amministratore' : 'Utente'}
-                </View>
+                <View><strong>Nome:</strong> {currentUserProfile.firstName || 'N/A'}</View>
+                <View><strong>Cognome:</strong> {currentUserProfile.lastName || 'N/A'}</View>
+                <View><strong>Ruolo:</strong> {currentUserProfile.role === 'admin' ? 'Amministratore' : 'Utente'}</View>
               </Flex>
             ) : (
-              // Fallback: mostra tutti i profili come prima (per compatibilità)
-              <Grid
-                margin="3rem 0"
-                autoFlow="column"
-                justifyContent="center"
-                gap="2rem"
-                alignContent="center"
-              >
-                {userprofiles.map((userprofile) => (
-                  <Flex
-                    key={userprofile.id || userprofile.email}
-                    direction="column"
-                    justifyContent="center"
-                    alignItems="center"
-                    gap="2rem"
-                    border="1px solid #ccc"
-                    padding="2rem"
-                    borderRadius="5%"
-                    className="box"
-                  >
-                    <View>
-                      <Heading level="3">{userprofile.name}</Heading>
-                    </View>
-                  </Flex>
-                ))}
-              </Grid>
+              <Alert variation="warning">
+                Profilo non trovato. Prova a ricaricare la pagina.
+              </Alert>
             )}
           </Flex>
         )}
@@ -320,11 +296,7 @@ export default function App() {
   if (showLogin) {
     return (
       <Authenticator
-        signUpAttributes={[
-          'email',
-          'given_name',
-          'family_name'
-        ]}
+        signUpAttributes={['email', 'given_name', 'family_name']}
         formFields={{
           signUp: {
             given_name: {
@@ -332,56 +304,42 @@ export default function App() {
               placeholder: 'Inserisci il tuo nome',
               isRequired: true,
               order: 1,
-              inputProps: {
-                autoComplete: 'given-name'
-              }
+              inputProps: { autoComplete: 'given-name' }
             },
             family_name: {
               label: 'Cognome *',
               placeholder: 'Inserisci il tuo cognome', 
               isRequired: true,
               order: 2,
-              inputProps: {
-                autoComplete: 'family-name'
-              }
+              inputProps: { autoComplete: 'family-name' }
             },
             email: {
               label: 'Email *',
               placeholder: 'Inserisci la tua email',
               isRequired: true,
               order: 3,
-              inputProps: {
-                autoComplete: 'email'
-              }
+              inputProps: { autoComplete: 'email' }
             },
             password: {
               label: 'Password *',
               placeholder: 'Inserisci una password sicura',
               isRequired: true,
               order: 4,
-              inputProps: {
-                autoComplete: 'new-password'
-              }
+              inputProps: { autoComplete: 'new-password' }
             },
             confirm_password: {
               label: 'Conferma Password *',
               placeholder: 'Conferma la password',
               isRequired: true,
               order: 5,
-              inputProps: {
-                autoComplete: 'new-password'
-              }
+              inputProps: { autoComplete: 'new-password' }
             }
           }
         }}
       >
-        {({ signOut, user }) => {
-          return user ? (
-            <AuthenticatedApp signOut={signOut} user={user} />
-          ) : (
-            <div>Loading login form...</div>
-          );
-        }}
+        {({ signOut, user }) => (
+          user ? <AuthenticatedApp signOut={signOut} user={user} /> : <div>Loading...</div>
+        )}
       </Authenticator>
     );
   }
@@ -393,11 +351,7 @@ export default function App() {
         userRole="guest"
         onLoginClick={() => setShowLogin(true)}
         onSignOut={() => {}}
-        onNavigate={(page) => {
-          if (page === 'home') {
-            // Già sulla home
-          }
-        }}
+        onNavigate={() => {}}
         currentPage="home"
       />
       <Flex flex="1">
