@@ -1,6 +1,6 @@
 import { Button, Flex, Heading, Text } from '@aws-amplify/ui-react';
 
-export default function Navbar({ user, onLoginClick, onSignOut, onNavigate, currentPage }) {
+export default function Navbar({ user, userRole, onLoginClick, onSignOut, onNavigate, currentPage }) {
   return (
     <Flex
       as="nav"
@@ -54,6 +54,17 @@ export default function Navbar({ user, onLoginClick, onSignOut, onNavigate, curr
           >
             Create Post
           </Button>
+          {/* Pulsante Admin Panel solo per admin */}
+          {userRole === 'admin' && (
+            <Button
+              variation="link"
+              onClick={() => onNavigate('admin')}
+              color={currentPage === 'admin' ? '#ffc107' : '#dc3545'}
+              fontWeight={currentPage === 'admin' ? '600' : '400'}
+            >
+              🛠️ Admin
+            </Button>
+          )}
         </Flex>
       )}
 
@@ -61,13 +72,24 @@ export default function Navbar({ user, onLoginClick, onSignOut, onNavigate, curr
       <Flex alignItems="center" gap="1rem">
         {user ? (
           <>
-            <Text 
-              fontSize="small" 
-              color="#adb5bd"
-              fontWeight="500"
-            >
-              Welcome, {user.username}
-            </Text>
+            <Flex direction="column" alignItems="flex-end">
+              <Text 
+                fontSize="small" 
+                color="#adb5bd"
+                fontWeight="500"
+              >
+                Welcome, {user.username}
+              </Text>
+              {userRole && userRole !== 'guest' && (
+                <Text 
+                  fontSize="x-small" 
+                  color={userRole === 'admin' ? '#28a745' : '#6c757d'}
+                  fontWeight="400"
+                >
+                  {userRole === 'admin' ? '🛡️ Admin' : '👤 User'}
+                </Text>
+              )}
+            </Flex>
             <Button 
               variation="outline" 
               onClick={onSignOut}

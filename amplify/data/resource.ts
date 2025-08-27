@@ -13,12 +13,12 @@ const schema = a.schema({
     .model({
       email: a.string(),
       name: a.string(),           // Nome completo
-      firstName: a.string(),      // NUOVO: Nome
-      lastName: a.string(),       // NUOVO: Cognome
+      firstName: a.string(),      // Nome
+      lastName: a.string(),       // Cognome
+      role: a.enum(['user', 'admin']), // Rimuovo .default('user')
       profileOwner: a.string(),
     })
-    .authorization((allow) => [allow.ownerDefinedIn("profileOwner"),
-  ]),
+    .authorization((allow) => [allow.ownerDefinedIn("profileOwner")]),
 
   Post: a
     .model({
@@ -28,11 +28,12 @@ const schema = a.schema({
       tags: a.string(),
       publishedAt: a.datetime().required(),
       authorId: a.string().required(),
-  })
-  .authorization((allow) => [allow.owner(),
-    allow.authenticated().to(['read']),
-    allow.guest().to(['read'])
-  ]),
+    })
+    .authorization((allow) => [
+      allow.owner(),
+      allow.authenticated().to(['read']),
+      allow.guest().to(['read'])
+    ]),
 });
 
 export type Schema = ClientSchema<typeof schema>;
