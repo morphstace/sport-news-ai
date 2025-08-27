@@ -175,6 +175,7 @@ function AuthenticatedApp({signOut, user}) {
       <Navbar 
         user={user}
         userRole={userRole}
+        userProfile={currentUserProfile} // Aggiungi questa prop
         onSignOut={signOut}
         onNavigate={setCurrentPage}
         currentPage={currentPage}

@@ -1,6 +1,12 @@
 import { Button, Flex, Heading, Text } from '@aws-amplify/ui-react';
 
-export default function Navbar({ user, userRole, onLoginClick, onSignOut, onNavigate, currentPage }) {
+export default function Navbar({ user, userRole, userProfile, onLoginClick, onSignOut, onNavigate, currentPage }) {
+  // Determina il nome da mostrare
+  const displayName = userProfile?.name || 
+                     userProfile?.firstName || 
+                     user?.username || 
+                     'Utente';
+
   return (
     <Flex
       as="nav"
@@ -16,6 +22,11 @@ export default function Navbar({ user, userRole, onLoginClick, onSignOut, onNavi
     >
       {/* Logo/Brand */}
       <Flex alignItems="center" gap="1rem">
+        <img
+          src='/logo.png'
+          style={{ width: 40, height: 40, borderRadius: '8px', cursor: 'pointer' }}
+          onClick={()=> onNavigate('home')}
+        />
         <Heading 
           level={3} 
           margin="0"
@@ -23,7 +34,7 @@ export default function Navbar({ user, userRole, onLoginClick, onSignOut, onNavi
           style={{ cursor: 'pointer' }}
           onClick={() => onNavigate('home')}
         >
-          🏆 Sport News AI
+          Sport News AI
         </Heading>
       </Flex>
 
@@ -78,7 +89,7 @@ export default function Navbar({ user, userRole, onLoginClick, onSignOut, onNavi
                 color="#adb5bd"
                 fontWeight="500"
               >
-                Welcome, {user.username}
+                Welcome, {displayName}
               </Text>
               {userRole && userRole !== 'guest' && (
                 <Text 
