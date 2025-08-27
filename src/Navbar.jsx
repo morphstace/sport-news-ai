@@ -1,17 +1,49 @@
 import { Button, Flex, Heading, Text } from '@aws-amplify/ui-react';
 
 export default function Navbar({ user, userRole, userProfile, onLoginClick, onSignOut, onNavigate, currentPage }) {
-  // Determina il nome da mostrare
-  const displayName = userProfile?.name || 
-                     userProfile?.firstName || 
-                     user?.username || 
-                     'Utente';
+  // Logica migliorata per determinare il nome da mostrare
+  const displayName = () => {
+    // Prima priorità: nome completo dal profilo
+    if (userProfile?.name && userProfile.name !== 'Utente') {
+      return userProfile.name;
+    }
+    
+    // Seconda priorità: nome + cognome dal profilo
+    if (userProfile?.firstName && userProfile?.lastName) {
+      return `${userProfile.firstName} ${userProfile.lastName}`.trim();
+    }
+    
+    // Terza priorità: solo nome dal profilo
+    if (userProfile?.firstName) {
+      return userProfile.firstName;
+    }
+    
+    // Quarta priorità: email dal profilo (solo la parte prima di @)
+    if (userProfile?.email && userProfile.email.includes('@')) {
+      return userProfile.email.split('@')[0];
+    }
+    
+    // Fallback: se tutto il resto fallisce
+    if (user?.username) {
+      // Se l'username è un UUID, usa solo "Utente"
+      if (user.username.includes('-') && user.username.length > 20) {
+        return 'Utente';
+      }
+      return user.username;
+    }
+    
+    return 'Utente';
+  };
+
+  // DEBUG: Log temporaneo (rimuovi dopo aver risolto)
+  console.log('Navbar - userProfile:', userProfile);
+  console.log('Navbar - displayName result:', displayName());
 
   return (
     <Flex
       as="nav"
       padding="1rem 2rem"
-      backgroundColor="#343a40" // Grigio scuro
+      backgroundColor="#343a40"
       borderBottom="1px solid #495057"
       justifyContent="space-between"
       alignItems="center"
@@ -24,13 +56,14 @@ export default function Navbar({ user, userRole, userProfile, onLoginClick, onSi
       <Flex alignItems="center" gap="1rem">
         <img
           src='/logo.png'
+          alt="Sport News AI Logo"
           style={{ width: 40, height: 40, borderRadius: '8px', cursor: 'pointer' }}
-          onClick={()=> onNavigate('home')}
+          onClick={() => onNavigate('home')}
         />
         <Heading 
           level={3} 
           margin="0"
-          color="#ffc107" // Giallo/oro
+          color="#ffc107"
           style={{ cursor: 'pointer' }}
           onClick={() => onNavigate('home')}
         >
@@ -65,7 +98,6 @@ export default function Navbar({ user, userRole, userProfile, onLoginClick, onSi
           >
             Create Post
           </Button>
-          {/* Pulsante Admin Panel solo per admin */}
           {userRole === 'admin' && (
             <Button
               variation="link"
@@ -89,7 +121,7 @@ export default function Navbar({ user, userRole, userProfile, onLoginClick, onSi
                 color="#adb5bd"
                 fontWeight="500"
               >
-                Welcome, {displayName}
+                Welcome, {displayName()}
               </Text>
               {userRole && userRole !== 'guest' && (
                 <Text 

@@ -172,10 +172,14 @@ function AuthenticatedApp({signOut, user}) {
 
   return (
     <Flex direction="column" minHeight="100vh">
+      {/* DEBUG: Rimuovi questo dopo aver risolto */}
+      {console.log('Current user profile:', currentUserProfile)}
+      {console.log('User object:', user)}
+      
       <Navbar 
         user={user}
         userRole={userRole}
-        userProfile={currentUserProfile} // Aggiungi questa prop
+        userProfile={currentUserProfile}
         onSignOut={signOut}
         onNavigate={setCurrentPage}
         currentPage={currentPage}

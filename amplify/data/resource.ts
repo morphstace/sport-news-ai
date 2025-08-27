@@ -11,10 +11,10 @@ and "delete" any "Todo" records.
 const schema = a.schema({
   UserProfile: a
     .model({
-      email: a.string(),
+      email: a.string().required(),
       name: a.string(),           // Nome completo
-      firstName: a.string(),      // Nome
-      lastName: a.string(),       // Cognome
+      firstName: a.string().required(),      // Nome
+      lastName: a.string().required(),       // Cognome
       role: a.enum(['user', 'admin']), // Rimuovo .default('user')
       profileOwner: a.string(),
     })
