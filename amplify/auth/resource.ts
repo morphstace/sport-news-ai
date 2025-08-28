@@ -1,5 +1,6 @@
 import { defineAuth } from '@aws-amplify/backend';
 import { postConfirmation } from './post-confirmation/resource';
+
 export const auth = defineAuth({
   loginWith: {
     email: true,
@@ -7,4 +8,5 @@ export const auth = defineAuth({
   triggers: {
     postConfirmation,
   },
+  groups: ["admins"], // Aggiungi il gruppo admins
 });

@@ -13,6 +13,7 @@ import {
 import { generateClient } from 'aws-amplify/data';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { cognitoUserPoolsTokenProvider } from 'aws-amplify/auth/cognito';
+import { checkIfUserIsAdmin } from './utils/authUtils';
 
 const client = generateClient({ authMode: "userPool" });
 
@@ -20,30 +21,38 @@ export default function PostList({ onBack, onCreateNew, onEditPost, signOut }) {
     const [posts, setPosts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
+    const [currentUser, setCurrentUser] = useState(null);
+    const [isAdmin, setIsAdmin] = useState(false);
 
     useEffect(() => {
         fetchPosts();
     }, []);
 
     const fetchPosts = async () => {
+        setIsLoading(true);
         try {
-            setIsLoading(true);
             const user = await getCurrentUser();
-            console.log('Current user:', user);
-            console.log('User ID:', user.userId);
+            const isUserAdmin = await checkIfUserIsAdmin();
+            
+            let postsQuery;
+            if (isUserAdmin) {
+                // Admin vede tutti i post
+                postsQuery = await client.models.Post.list();
+            } else {
+                // Utente normale vede solo i suoi post
+                postsQuery = await client.models.Post.list({
+                    filter: { authorId: { eq: user.userId } }
+                });
+            }
 
-            // Fetch tutti i post dell'utente corrente
-            const { data: userPosts } = await client.models.Post.list({
-                filter: { authorId: { eq: user.userId } }
-            });
-            console.log('Fetched posts:', userPosts);
-            console.log('Number of posts fetched:', userPosts.length);
-            // Ordina per data di pubblicazione (più recenti prima)
-            const sortedPosts = userPosts.sort((a, b) => 
+            const { data: posts } = postsQuery;
+            const sortedPosts = posts.sort((a, b) => 
                 new Date(b.publishedAt) - new Date(a.publishedAt)
             );
             
             setPosts(sortedPosts);
+            setCurrentUser(user);
+            setIsAdmin(isUserAdmin);
         } catch (err) {
             console.error('Error fetching posts:', err);
             setError('Failed to load posts');

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Button,
   Heading,
@@ -14,11 +14,23 @@ import {
   Divider,
   Card
 } from '@aws-amplify/ui-react';
+import { checkIfUserIsAdmin } from './utils/authUtils';
 
-export default function AdminPanel({ userProfiles, currentUserRole, onUpdateRole, onRefresh }) {
+export default function AdminPanel({ userProfiles, isAdmin, onUpdateRole, onRefresh }) {
   const [loadingUpdate, setLoadingUpdate] = useState({});
+  const [loading, setLoading] = useState(true);
 
-  if (currentUserRole !== 'admin') {
+  useEffect(() => {
+    const verifyAdmin = async () => {
+      const adminStatus = await checkIfUserIsAdmin();
+      setIsAdmin(adminStatus);
+      setLoading(false);
+    };
+    verifyAdmin();
+  }, []);
+
+  if (loading) return <div>Loading...</div>;
+  if (!isAdmin) {
     return (
       <Flex 
         justifyContent="center" 

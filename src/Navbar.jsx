@@ -1,6 +1,6 @@
 import { Button, Flex, Heading, Text } from '@aws-amplify/ui-react';
 
-export default function Navbar({ user, userRole, userProfile, onLoginClick, onSignOut, onNavigate, currentPage }) {
+export default function Navbar({ user, isAdmin, userProfile, onLoginClick, onSignOut, onNavigate, currentPage }) {
   // Logica migliorata per determinare il nome da mostrare
   const displayName = () => {
     // Prima priorità: nome completo dal profilo
@@ -98,7 +98,7 @@ export default function Navbar({ user, userRole, userProfile, onLoginClick, onSi
           >
             Create Post
           </Button>
-          {userRole === 'admin' && (
+          {isAdmin && (
             <Button
               variation="link"
               onClick={() => onNavigate('admin')}
@@ -123,13 +123,13 @@ export default function Navbar({ user, userRole, userProfile, onLoginClick, onSi
               >
                 Welcome, {displayName()}
               </Text>
-              {userRole && userRole !== 'guest' && (
+              {isAdmin && (
                 <Text 
                   fontSize="x-small" 
-                  color={userRole === 'admin' ? '#28a745' : '#6c757d'}
+                  color="#28a745"
                   fontWeight="400"
                 >
-                  {userRole === 'admin' ? '🛡️ Admin' : '👤 User'}
+                  🛡️ Admin
                 </Text>
               )}
             </Flex>

@@ -15,10 +15,12 @@ const schema = a.schema({
       name: a.string(),           // Nome completo
       firstName: a.string().required(),      // Nome
       lastName: a.string().required(),       // Cognome
-      role: a.enum(['user', 'admin']), // Rimuovo .default('user')
       profileOwner: a.string(),
     })
-    .authorization((allow) => [allow.ownerDefinedIn("profileOwner")]),
+    .authorization((allow) => [
+      allow.ownerDefinedIn("profileOwner"),
+      allow.group('admins').to(['read', 'update', 'delete']), // Aggiungi permessi admin
+    ]),
 
   Post: a
     .model({
@@ -31,6 +33,7 @@ const schema = a.schema({
     })
     .authorization((allow) => [
       allow.owner(),
+      allow.group('admins').to(['create', 'read', 'update', 'delete']), // Admin può tutto
       allow.authenticated().to(['read']),
       allow.guest().to(['read'])
     ]),
@@ -41,7 +44,7 @@ export type Schema = ClientSchema<typeof schema>;
 export const data = defineData({
   schema,
   authorizationModes: {
-    defaultAuthorizationMode: "apiKey",
+    defaultAuthorizationMode: "userPool", // Cambia da "apiKey" a "userPool"
     apiKeyAuthorizationMode: {
       expiresInDays: 30,
     },

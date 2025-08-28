@@ -13,7 +13,8 @@ import { useAuthenticator } from '@aws-amplify/ui-react';
 import {Amplify} from 'aws-amplify';
 import "@aws-amplify/ui-react/styles.css";
 import { generateClient } from 'aws-amplify/data';
-import { fetchUserAttributes } from 'aws-amplify/auth';
+import { fetchUserAttributes, getCurrentUser, fetchAuthSession } from 'aws-amplify/auth'; // AGGIUNGI fetchAuthSession
+import { checkIfUserIsAdmin } from './utils/authUtils'; // AGGIUNGI QUESTO IMPORT
 import outputs from "../amplify_outputs.json";
 import HomePage from './HomePage';
 import PostEditor from './PostEditor';
@@ -29,11 +30,10 @@ const client = generateClient({
 function AuthenticatedApp({signOut, user}) {
   const [userprofiles, setUserProfiles] = useState([]);
   const [currentPage, setCurrentPage] = useState('profile');
-  const [userRole, setUserRole] = useState('user');
+  const [isAdmin, setIsAdmin] = useState(false); // CAMBIA da userRole a isAdmin
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   
-  // Ref per prevenire inizializzazioni multiple
   const initializingRef = useRef(false);
 
   useEffect(() => {
@@ -50,11 +50,15 @@ function AuthenticatedApp({signOut, user}) {
       // 1. Ottieni attributi utente
       const attributes = await fetchUserAttributes();
       
-      // 2. Carica profili esistenti
+      // 2. Controlla se è admin usando i gruppi Cognito
+      const adminStatus = await checkIfUserIsAdmin();
+      setIsAdmin(adminStatus);
+      
+      // 3. Carica profili esistenti
       const { data: profiles } = await client.models.UserProfile.list();
       setUserProfiles(profiles);
       
-      // 3. Controlla/crea profilo utente
+      // 4. Controlla/crea profilo utente
       await ensureUserProfile(attributes, profiles);
       
       setLoading(false);
@@ -64,7 +68,6 @@ function AuthenticatedApp({signOut, user}) {
     }
   }
 
-  // FUNZIONE CONSOLIDATA: gestisce sia il controllo che la creazione
   async function ensureUserProfile(attributes, existingProfiles) {
     if (!attributes?.email && !user?.username) {
       console.error('No user email found');
@@ -74,10 +77,8 @@ function AuthenticatedApp({signOut, user}) {
     const userEmail = attributes?.email || user?.username || '';
     const userId = user?.userId || user?.username || attributes?.sub || '';
     
-    // Cerca profilo esistente
     let userProfile = existingProfiles.find(profile => profile.email === userEmail);
     
-    // Se non esiste, crealo
     if (!userProfile) {
       try {
         const givenName = attributes?.given_name || '';
@@ -89,13 +90,11 @@ function AuthenticatedApp({signOut, user}) {
           name: fullName || 'Utente',
           firstName: givenName,
           lastName: familyName,
-          role: 'user',
+          // RIMUOVI: role: 'user', - non esiste più nel schema
           profileOwner: userId
         });
         
         userProfile = response.data;
-        
-        // Aggiorna lo stato locale senza ricaricare tutto
         setUserProfiles(prev => [...prev, userProfile]);
       } catch (error) {
         console.error('Error creating user profile:', error);
@@ -103,64 +102,31 @@ function AuthenticatedApp({signOut, user}) {
       }
     }
 
-    // Imposta profilo corrente e ruolo
     setCurrentUserProfile(userProfile);
-    setUserRole(userProfile.role || 'user');
   }
 
-  // FUNZIONE CONSOLIDATA: ricarica profili (solo quando necessario)
   async function refreshUserProfiles() {
     try {
       const { data: profiles } = await client.models.UserProfile.list();
       setUserProfiles(profiles);
       
-      // Aggiorna anche il profilo corrente se necessario
       if (currentUserProfile) {
         const updatedProfile = profiles.find(p => p.id === currentUserProfile.id);
         if (updatedProfile) {
           setCurrentUserProfile(updatedProfile);
-          setUserRole(updatedProfile.role || 'user');
         }
       }
+      
+      // Ricontrolla lo status admin
+      const adminStatus = await checkIfUserIsAdmin();
+      setIsAdmin(adminStatus);
     } catch (error) {
       console.error('Error refreshing user profiles:', error);
     }
   }
 
-  // Funzione per aggiornare il ruolo (semplificata)
-  async function updateUserRole(profileId, newRole) {
-    if (userRole !== 'admin') {
-      alert('Solo gli amministratori possono modificare i ruoli');
-      return;
-    }
-
-    try {
-      await client.models.UserProfile.update({
-        id: profileId,
-        role: newRole
-      });
-      
-      // Aggiorna lo stato locale
-      setUserProfiles(prev => 
-        prev.map(profile => 
-          profile.id === profileId 
-            ? { ...profile, role: newRole }
-            : profile
-        )
-      );
-      
-      // Se è il nostro profilo, aggiorna anche il ruolo locale
-      if (currentUserProfile?.id === profileId) {
-        setUserRole(newRole);
-        setCurrentUserProfile(prev => ({ ...prev, role: newRole }));
-      }
-      
-      alert(`Ruolo aggiornato a ${newRole === 'admin' ? 'Amministratore' : 'Utente'}`);
-    } catch (error) {
-      console.error('Error updating user role:', error);
-      alert('Errore durante l\'aggiornamento del ruolo');
-    }
-  }
+  // RIMUOVI questa funzione - i ruoli ora si gestiscono tramite gruppi Cognito
+  // async function updateUserRole(profileId, newRole) { ... }
 
   if (loading) {
     return (
@@ -170,15 +136,42 @@ function AuthenticatedApp({signOut, user}) {
     );
   }
 
+  // Aggiungi questa funzione di debug
+  async function debugUserGroups() {
+    try {
+      console.log('=== DEBUG USER GROUPS ===');
+      
+      // Metodo 1: fetchAuthSession
+      const session = await fetchAuthSession();
+      console.log('Auth session:', session);
+      console.log('Access token:', session.tokens?.accessToken);
+      console.log('Access token payload:', session.tokens?.accessToken?.payload);
+      console.log('Groups from session:', session.tokens?.accessToken?.payload?.['cognito:groups']);
+      
+      // Metodo 2: getCurrentUser
+      const user = await getCurrentUser();
+      console.log('Current user:', user);
+      console.log('User session:', user.signInUserSession);
+      
+      // Metodo 3: checkIfUserIsAdmin
+      const isAdmin = await checkIfUserIsAdmin();
+      console.log('Is admin result:', isAdmin);
+      
+    } catch (error) {
+      console.error('Debug error:', error);
+    }
+  }
+
   return (
     <Flex direction="column" minHeight="100vh">
-      {/* DEBUG: Rimuovi questo dopo aver risolto */}
-      {console.log('Current user profile:', currentUserProfile)}
-      {console.log('User object:', user)}
+      {/* BOTTONE TEMPORANEO PER DEBUG */}
+      <Button onClick={debugUserGroups} size="small">
+        Debug Groups
+      </Button>
       
       <Navbar 
         user={user}
-        userRole={userRole}
+        isAdmin={isAdmin} // CAMBIA da userRole a isAdmin
         userProfile={currentUserProfile}
         onSignOut={signOut}
         onNavigate={setCurrentPage}
@@ -208,11 +201,10 @@ function AuthenticatedApp({signOut, user}) {
           />
         )}
 
-        {currentPage === 'admin' && userRole === 'admin' && (
+        {currentPage === 'admin' && isAdmin && (
           <AdminPanel
             userProfiles={userprofiles}
-            currentUserRole={userRole}
-            onUpdateRole={updateUserRole}
+            isAdmin={isAdmin} // CAMBIA da currentUserRole a isAdmin
             onRefresh={refreshUserProfiles}
           />
         )}
@@ -230,11 +222,11 @@ function AuthenticatedApp({signOut, user}) {
             <Heading level={1}>My Profile</Heading>
             
             <Alert 
-              variation={userRole === 'admin' ? 'success' : 'info'} 
+              variation={isAdmin ? 'success' : 'info'} // USA isAdmin
               margin="1rem 0"
               hasIcon={true}
             >
-              <strong>Ruolo:</strong> {userRole === 'admin' ? '🛡️ Amministratore' : '👤 Utente'}
+              <strong>Ruolo:</strong> {isAdmin ? '🛡️ Amministratore' : '👤 Utente'}
             </Alert>
 
             <Divider />
@@ -252,7 +244,7 @@ function AuthenticatedApp({signOut, user}) {
               >
                 Manage Posts
               </Button>
-              {userRole === 'admin' && (
+              {isAdmin && ( // USA isAdmin
                 <Button
                   variation="destructive"
                   onClick={() => setCurrentPage('admin')}
@@ -281,7 +273,7 @@ function AuthenticatedApp({signOut, user}) {
                 <View><strong>Email:</strong> {currentUserProfile.email}</View>
                 <View><strong>Nome:</strong> {currentUserProfile.firstName || 'N/A'}</View>
                 <View><strong>Cognome:</strong> {currentUserProfile.lastName || 'N/A'}</View>
-                <View><strong>Ruolo:</strong> {currentUserProfile.role === 'admin' ? 'Amministratore' : 'Utente'}</View>
+                <View><strong>Ruolo:</strong> {isAdmin ? 'Amministratore' : 'Utente'}</View>
               </Flex>
             ) : (
               <Alert variation="warning">
