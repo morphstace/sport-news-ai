@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { 
-  Button,
   Heading,
   Flex,
   View,
@@ -12,24 +11,24 @@ import {
   Badge,
   Alert,
   Divider,
-  Card
+  Card,
+  Button
 } from '@aws-amplify/ui-react';
 import { checkIfUserIsAdmin } from './utils/authUtils';
 
-export default function AdminPanel({ userProfiles, isAdmin, onUpdateRole, onRefresh }) {
-  const [loadingUpdate, setLoadingUpdate] = useState({});
+export default function AdminPanel({ userProfiles, isAdmin, onRefresh }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const verifyAdmin = async () => {
       const adminStatus = await checkIfUserIsAdmin();
-      setIsAdmin(adminStatus);
       setLoading(false);
     };
     verifyAdmin();
   }, []);
 
   if (loading) return <div>Loading...</div>;
+  
   if (!isAdmin) {
     return (
       <Flex 
@@ -46,18 +45,6 @@ export default function AdminPanel({ userProfiles, isAdmin, onUpdateRole, onRefr
       </Flex>
     );
   }
-
-  const handleRoleUpdate = async (profileId, newRole) => {
-    if (window.confirm(`Sei sicuro di voler cambiare il ruolo a ${newRole === 'admin' ? 'Amministratore' : 'Utente'}?`)) {
-      setLoadingUpdate(prev => ({ ...prev, [profileId]: true }));
-      try {
-        await onUpdateRole(profileId, newRole);
-        await onRefresh();
-      } finally {
-        setLoadingUpdate(prev => ({ ...prev, [profileId]: false }));
-      }
-    }
-  };
 
   const adminCount = userProfiles.filter(p => p.role === 'admin').length;
   const userCount = userProfiles.filter(p => p.role === 'user' || !p.role).length;
@@ -76,7 +63,6 @@ export default function AdminPanel({ userProfiles, isAdmin, onUpdateRole, onRefr
         Da qui puoi gestire i ruoli degli utenti registrati. Solo gli amministratori possono promuovere o declassare altri utenti.
       </Alert>
 
-      {/* Statistiche */}
       <Flex gap="1rem" margin="1rem 0" wrap="wrap">
         <Card padding="1rem" flex="1" minWidth="200px">
           <Heading level={4} margin="0 0 0.5rem 0" color="#28a745">👥 Utenti Totali</Heading>
@@ -109,7 +95,6 @@ export default function AdminPanel({ userProfiles, isAdmin, onUpdateRole, onRefr
       ) : (
         <Card>
           <Table
-            caption=""
             highlightOnHover={true}
             size="small"
           >
@@ -118,7 +103,6 @@ export default function AdminPanel({ userProfiles, isAdmin, onUpdateRole, onRefr
                 <TableCell as="th" style={{ fontWeight: 'bold' }}>Nome</TableCell>
                 <TableCell as="th" style={{ fontWeight: 'bold' }}>Email</TableCell>
                 <TableCell as="th" style={{ fontWeight: 'bold' }}>Ruolo</TableCell>
-                <TableCell as="th" style={{ fontWeight: 'bold' }}>Azioni</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -142,30 +126,6 @@ export default function AdminPanel({ userProfiles, isAdmin, onUpdateRole, onRefr
                       {profile.role === 'admin' ? '🛡️ Admin' : '👤 User'}
                     </Badge>
                   </TableCell>
-                  <TableCell>
-                    <Flex gap="0.5rem" alignItems="center">
-                      {profile.role === 'user' || !profile.role ? (
-                        <Button
-                          variation="primary"
-                          size="small"
-                          isLoading={loadingUpdate[profile.id]}
-                          onClick={() => handleRoleUpdate(profile.id, 'admin')}
-                        >
-                          ⬆️ Promuovi
-                        </Button>
-                      ) : (
-                        <Button
-                          variation="destructive"
-                          size="small"
-                          isLoading={loadingUpdate[profile.id]}
-                          onClick={() => handleRoleUpdate(profile.id, 'user')}
-                          isDisabled={adminCount <= 1} // Impedisce di rimuovere l'ultimo admin
-                        >
-                          ⬇️ Declassa
-                        </Button>
-                      )}
-                    </Flex>
-                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -176,10 +136,8 @@ export default function AdminPanel({ userProfiles, isAdmin, onUpdateRole, onRefr
       <Divider margin="2rem 0" />
 
       <Alert variation="warning" hasIcon={true}>
-        <strong>⚠️ Attenzione:</strong><br />
-        • Le modifiche ai ruoli sono immediate e permanenti<br />
-        • Deve sempre esserci almeno un amministratore nel sistema<br />
-        • Gli amministratori possono creare e modificare tutti i contenuti
+        <strong>⚠️ Nota:</strong><br />
+        La gestione dei ruoli è ora basata sui gruppi Cognito e deve essere gestita dalla console AWS.
       </Alert>
     </Flex>
   );

@@ -1,4 +1,4 @@
-import { use, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     Button,
     Heading,
@@ -9,7 +9,7 @@ import {
     Card,
     Alert
 } from '@aws-amplify/ui-react';
-import {generateClient } from 'aws-amplify/data';
+import { generateClient } from 'aws-amplify/data';
 import { getCurrentUser } from 'aws-amplify/auth';
 
 const client = generateClient({ authMode: "userPool" });
@@ -27,6 +27,7 @@ export default function PostEditor({ onBack, signOut, editingPost = null }) {
     const [success, setSuccess] = useState('');
 
     const isEditing = !!editingPost;
+
     useEffect(() => {
         if (editingPost) {
             setPost({
@@ -43,45 +44,38 @@ export default function PostEditor({ onBack, signOut, editingPost = null }) {
         setIsLoading(true);
         setError('');
         setSuccess('');
+
         try {
             const user = await getCurrentUser();
             
-            if(isEditing){
-                const result = await client.models.Post.update({
+            if (isEditing) {
+                await client.models.Post.update({
                     id: editingPost.id,
                     title: post.title,
                     content: post.content,
                     category: post.category,
                     tags: post.tags
                 });
-                console.log('Post updated:', result);
                 setSuccess('Post updated successfully!');
-            }else{
-                const result = await client.models.Post.create({
+            } else {
+                await client.models.Post.create({
                     title: post.title,
                     content: post.content,
                     category: post.category,
                     tags: post.tags,
-                publishedAt: new Date().toISOString(),
-                authorId: user.userId
-            });
-            console.log('Post created:', result);
-            setSuccess('Post created successfully!');
+                    publishedAt: new Date().toISOString(),
+                    authorId: user.userId
+                });
+                setSuccess('Post created successfully!');
             }
             
-            //reset
-            setPost({
-                title: '',
-                content: '',
-                category: '',
-                tags: ''
-            });
+            setPost({ title: '', content: '', category: '', tags: '' });
             setTimeout(() => {
                 onBack();
             }, 2000);
         } catch (error) {
-            console.error('Error creating post:', error);
-            setError('Failed to create post.');
+            console.error('Error saving post:', error);
+            setError(`Failed to ${isEditing ? 'update' : 'create'} post.`);
         } finally {
             setIsLoading(false);
         }
@@ -95,7 +89,7 @@ export default function PostEditor({ onBack, signOut, editingPost = null }) {
             margin="0 auto"
         >
             <Flex justifyContent="space-between" alignItems="center" marginBottom="2rem">
-                <Heading level={1}>Create New Post</Heading>
+                <Heading level={1}>{isEditing ? 'Edit Post' : 'Create New Post'}</Heading>
                 <Flex gap="1rem">
                     <Button variation='link' onClick={onBack}>
                         Back to Profile
@@ -104,7 +98,6 @@ export default function PostEditor({ onBack, signOut, editingPost = null }) {
                 </Flex>
             </Flex>
 
-            {/**Alerts */}
             {error && (
                 <Alert variation="error" marginBottom="1rem">
                     {error}
@@ -117,52 +110,53 @@ export default function PostEditor({ onBack, signOut, editingPost = null }) {
                 </Alert>
             )}
 
-        <Card padding="2rem">
-            <Flex as="form" onSubmit={handleSubmit} direction="column" gap="1.5rem">
-                <TextField
-                    label="Post Title"
-                    placeholder="Enter news title ..."
-                    value={post.title}
-                    onChange={(e) => setPost({ ...post, title: e.target.value })}
-                    required
-                />
+            <Card padding="2rem">
+                <Flex as="form" onSubmit={handleSubmit} direction="column" gap="1.5rem">
+                    <TextField
+                        label="Post Title"
+                        placeholder="Enter news title ..."
+                        value={post.title}
+                        onChange={(e) => setPost({ ...post, title: e.target.value })}
+                        required
+                    />
 
-                <SelectField
-                    label="Category"
-                    value={post.category}
-                    onChange={(e) => setPost({ ...post, category: e.target.value })}
-                    required
-                >
-                    <option value="">Select a category</option>
-                    <option value="sports">Sports</option>
-                    <option value="politics">Politics</option>
-                    <option value="technology">Technology</option>
-                </SelectField>
+                    <SelectField
+                        label="Category"
+                        value={post.category}
+                        onChange={(e) => setPost({ ...post, category: e.target.value })}
+                        required
+                    >
+                        <option value="">Select a category</option>
+                        <option value="sports">Sports</option>
+                        <option value="politics">Politics</option>
+                        <option value="technology">Technology</option>
+                    </SelectField>
 
-                <TextField
-                    label="Tags"
-                    placeholder="Enter tags (comma separated)"
-                    value={post.tags}
-                    onChange={(e) => setPost({ ...post, tags: e.target.value })}
-                />
-                
-                <TextAreaField
-                    label="Content"
-                    placeholder="Enter post content ..."
-                    value={post.content}
-                    onChange={(e) => setPost({ ...post, content: e.target.value })}
-                    required
-                />
+                    <TextField
+                        label="Tags"
+                        placeholder="Enter tags (comma separated)"
+                        value={post.tags}
+                        onChange={(e) => setPost({ ...post, tags: e.target.value })}
+                    />
+                    
+                    <TextAreaField
+                        label="Content"
+                        placeholder="Enter post content ..."
+                        value={post.content}
+                        onChange={(e) => setPost({ ...post, content: e.target.value })}
+                        required
+                    />
 
-                <Flex gap="1rem" justifyContent="flex-end">
-                    <Button type="button" variation="link" onClick={onBack}>
-                        Cancel
-                    </Button>
-                    <Button type="submit" variation='primary'>Submit Post
-                    </Button>
+                    <Flex gap="1rem" justifyContent="flex-end">
+                        <Button type="button" variation="link" onClick={onBack}>
+                            Cancel
+                        </Button>
+                        <Button type="submit" variation='primary' isLoading={isLoading}>
+                            {isEditing ? 'Update Post' : 'Submit Post'}
+                        </Button>
+                    </Flex>
                 </Flex>
-            </Flex>
-        </Card>
+            </Card>
         </Flex>
     )
 }

@@ -1,31 +1,25 @@
-import { Button, Flex, Heading, Text } from '@aws-amplify/ui-react';
+import { Button, Flex, Text } from '@aws-amplify/ui-react';
+import { Link } from 'react-router-dom';
 
-export default function Navbar({ user, isAdmin, userProfile, onLoginClick, onSignOut, onNavigate, currentPage }) {
-  // Logica migliorata per determinare il nome da mostrare
+export default function Navbar({ user, isAdmin, userProfile, onLoginClick, onSignOut, onNavigate, currentPage, onAppNameClick }) {
   const displayName = () => {
-    // Prima priorità: nome completo dal profilo
     if (userProfile?.name && userProfile.name !== 'Utente') {
       return userProfile.name;
     }
     
-    // Seconda priorità: nome + cognome dal profilo
     if (userProfile?.firstName && userProfile?.lastName) {
       return `${userProfile.firstName} ${userProfile.lastName}`.trim();
     }
     
-    // Terza priorità: solo nome dal profilo
     if (userProfile?.firstName) {
       return userProfile.firstName;
     }
     
-    // Quarta priorità: email dal profilo (solo la parte prima di @)
     if (userProfile?.email && userProfile.email.includes('@')) {
       return userProfile.email.split('@')[0];
     }
     
-    // Fallback: se tutto il resto fallisce
     if (user?.username) {
-      // Se l'username è un UUID, usa solo "Utente"
       if (user.username.includes('-') && user.username.length > 20) {
         return 'Utente';
       }
@@ -34,10 +28,6 @@ export default function Navbar({ user, isAdmin, userProfile, onLoginClick, onSig
     
     return 'Utente';
   };
-
-  // DEBUG: Log temporaneo (rimuovi dopo aver risolto)
-  console.log('Navbar - userProfile:', userProfile);
-  console.log('Navbar - displayName result:', displayName());
 
   return (
     <Flex
@@ -52,26 +42,21 @@ export default function Navbar({ user, isAdmin, userProfile, onLoginClick, onSig
       zIndex="100"
       boxShadow="0 2px 8px rgba(0,0,0,0.2)"
     >
-      {/* Logo/Brand */}
       <Flex alignItems="center" gap="1rem">
-        <img
-          src='/logo.png'
-          alt="Sport News AI Logo"
-          style={{ width: 40, height: 40, borderRadius: '8px', cursor: 'pointer' }}
-          onClick={() => onNavigate('home')}
-        />
-        <Heading 
-          level={3} 
-          margin="0"
-          color="#ffc107"
-          style={{ cursor: 'pointer' }}
-          onClick={() => onNavigate('home')}
-        >
-          Sport News AI
-        </Heading>
+        <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <div className="navbar-logo">
+            <img src="/public/logo.png" alt="Logo" style={{ height: '32px', verticalAlign: 'middle' }} />
+            <span
+              className="app-name"
+              style={{ cursor: 'pointer' }}
+              onClick={onAppNameClick}
+            >
+              Sport News AI
+            </span>
+          </div>
+        </Link>
       </Flex>
 
-      {/* Navigation Links */}
       {user && (
         <Flex gap="1rem" alignItems="center">
           <Button
@@ -111,7 +96,6 @@ export default function Navbar({ user, isAdmin, userProfile, onLoginClick, onSig
         </Flex>
       )}
 
-      {/* User Section */}
       <Flex alignItems="center" gap="1rem">
         {user ? (
           <>

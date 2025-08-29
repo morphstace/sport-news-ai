@@ -1,18 +1,20 @@
 import { Button, Heading, Flex, Text, Divider, Card, Badge } from '@aws-amplify/ui-react';
 import { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/data';
+import { useNavigate } from 'react-router-dom';
 
-const client = generateClient({ authMode: "apiKey", });
+const client = generateClient({ authMode: "apiKey" });
 
 export default function HomePage({ onLoginClick }) {
   const [posts, setPosts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchPublicPosts();
   }, []);
 
-  const  formatDate = (dateString) => {
+  const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('it-IT', {
       month: 'short',
       day: 'numeric',
@@ -22,18 +24,14 @@ export default function HomePage({ onLoginClick }) {
 
   const fetchPublicPosts = async () => {
     try {
-      const clientUserPool = generateClient({ authMode: "userPool", });
-      console.log('Fetching public posts...');
-      const {data: publicPosts} = await clientUserPool.models.Post.list();
-      console.log('Fetched posts:', publicPosts);
-      console.log('Number of posts fetched:', publicPosts.length);
+      const { data: publicPosts } = await client.models.Post.list();
       const sortedPosts = publicPosts.sort((a, b) => 
-        new Date(b.publishedAt) - new Date(a.publishedAt)).slice(0,6);
+        new Date(b.publishedAt) - new Date(a.publishedAt)).slice(0, 6);
       setPosts(sortedPosts);
     } catch (error) {
       console.error('Error fetching public posts:', error);
       setPosts([]);
-    }finally{
+    } finally {
       setIsLoading(false);
     }
   };
@@ -87,11 +85,13 @@ export default function HomePage({ onLoginClick }) {
             justifyContent="center"
           >
             {posts.map((post) => (
-              <Card 
-                key={post.id} 
-                padding="1.5rem" 
+              <Card
+                key={post.id}
+                padding="1.5rem"
                 maxWidth="350px"
                 minHeight="200px"
+                style={{ cursor: 'pointer' }}
+                onClick={() => navigate(`/post/${post.id}`)}
               >
                 {/* Post Header */}
                 <Flex 
