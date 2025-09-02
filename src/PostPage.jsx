@@ -8,11 +8,38 @@ const client = generateClient({ authMode: "apiKey" });
 export default function PostPage() {
   const { postId } = useParams();
   const [post, setPost] = useState(null);
+  const [author, setAuthor] = useState(null);
 
   useEffect(() => {
     async function fetchPost() {
-      const { data } = await client.models.Post.get({ id: postId });
-      setPost(data);
+      try {
+        const { data: postData } = await client.models.Post.get({ id: postId });
+        setPost(postData);
+        
+        if (postData?.authorId) {
+          const { data: userProfiles } = await client.models.UserProfile.list();
+          const authorProfile = userProfiles.find(profile => 
+            profile.profileOwner === postData.authorId
+          );
+          
+          if (authorProfile) {
+            setAuthor({
+              name: authorProfile.name || 
+                    `${authorProfile.firstName || ''} ${authorProfile.lastName || ''}`.trim() || 
+                    'Autore Anonimo',
+              firstName: authorProfile.firstName,
+              lastName: authorProfile.lastName,
+              email: authorProfile.email
+            });
+          } else {
+            setAuthor({ name: 'Autore Anonimo' });
+          }
+        } else {
+          setAuthor({ name: 'Autore Anonimo' });
+        }
+      } catch (error) {
+        console.error('Error fetching post:', error);
+      }
     }
     fetchPost();
   }, [postId]);
@@ -28,7 +55,14 @@ export default function PostPage() {
             {new Date(post.publishedAt).toLocaleDateString('it-IT')}
           </Text>
         </Flex>
-        <Heading level={2} marginBottom="1rem">{post.title}</Heading>
+        <Heading level={2} marginBottom="0.5rem">{post.title}</Heading>
+        
+        {author && (
+          <Text fontSize="small" color="gray" marginBottom="1rem" fontStyle="italic">
+            di {author.name}
+          </Text>
+        )}
+        
         <Text marginBottom="1rem">{post.content}</Text>
         {post.tags && (
           <Flex gap="0.5rem" wrap="wrap">

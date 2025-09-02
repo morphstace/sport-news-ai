@@ -25,7 +25,24 @@ export default function HomePage({ onLoginClick }) {
   const fetchPublicPosts = async () => {
     try {
       const { data: publicPosts } = await client.models.Post.list();
-      const sortedPosts = publicPosts.sort((a, b) => 
+      
+      // Recupera i profili utente per gli autori
+      const { data: userProfiles } = await client.models.UserProfile.list();
+      
+      // Associa ogni post con il profilo dell'autore
+      const postsWithAuthors = publicPosts.map(post => {
+        const author = userProfiles.find(profile => profile.profileOwner === post.authorId);
+        return {
+          ...post,
+          author: author ? {
+            name: author.name || `${author.firstName || ''} ${author.lastName || ''}`.trim() || 'Autore Anonimo',
+            firstName: author.firstName,
+            lastName: author.lastName
+          } : { name: 'Autore Anonimo' }
+        };
+      });
+      
+      const sortedPosts = postsWithAuthors.sort((a, b) => 
         new Date(b.publishedAt) - new Date(a.publishedAt)).slice(0, 6);
       setPosts(sortedPosts);
     } catch (error) {
@@ -111,6 +128,11 @@ export default function HomePage({ onLoginClick }) {
                 <Heading level={4} marginBottom="0.5rem">
                   {post.title}
                 </Heading>
+
+                {/* Author */}
+                <Text fontSize="small" color="gray" marginBottom="0.5rem">
+                  di {post.author.name}
+                </Text>
 
                 {/* Post Preview */}
                 <Text 

@@ -13,6 +13,7 @@ const schema = a.schema({
     .authorization((allow) => [
       allow.ownerDefinedIn("profileOwner"),
       allow.group('admins').to(['read', 'update', 'delete']), // Aggiungi permessi admin
+      allow.publicApiKey().to(['read']) // Permetti lettura pubblica
     ]),
 
   Post: a
@@ -26,7 +27,7 @@ const schema = a.schema({
     })
     .authorization((allow) => [
       allow.group('admins').to(['create', 'read', 'update', 'delete']), // Admin può tutto
-      allow.authenticated().to(['read']),
+      allow.authenticated().to(['create','read','update']),
       allow.publicApiKey().to(['read']) // Cambiato da allow.guest() a allow.publicApiKey()
     ]),
 });
