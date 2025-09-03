@@ -53,6 +53,13 @@ export default function HomePage({ onLoginClick }) {
     }
   };
 
+  // Funzione per ottenere il primo tag come categoria
+  const getMainCategory = (tags) => {
+    if (!tags) return 'SPORT';
+    const tagList = tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+    return tagList.length > 0 ? tagList[0].toUpperCase() : 'SPORT';
+  };
+
   return (
     <Flex
       direction="column"
@@ -120,13 +127,28 @@ export default function HomePage({ onLoginClick }) {
                       alignItems="center" 
                       marginBottom="1rem"
                     >
-                      <Badge size="small">
-                        {post.category.toUpperCase()}
+                      <Badge size="small" variation="info">
+                        {getMainCategory(post.tags)}
                       </Badge>
                       <Text fontSize="small" color="gray">
                         {formatDate(post.publishedAt)}
                       </Text>
                     </Flex>
+
+                    {/* Post Image (se presente) */}
+                    {post.imageUrl && (
+                      <img 
+                        src={post.imageUrl} 
+                        alt={post.title}
+                        style={{
+                          width: '100%',
+                          height: '150px',
+                          objectFit: 'cover',
+                          borderRadius: '6px',
+                          marginBottom: '1rem'
+                        }}
+                      />
+                    )}
 
                     {/* Post Title */}
                     <Heading level={4} marginBottom="0.5rem">
@@ -155,10 +177,10 @@ export default function HomePage({ onLoginClick }) {
                     {/* Tags */}
                     {post.tags && (
                       <Flex gap="0.5rem" wrap="wrap">
-                        {post.tags.split(',').slice(0, 3).map((tag) => {
+                        {post.tags.split(',').slice(0, 3).map((tag, index) => {
                           const trimmedTag = tag.trim();
                           return (
-                            <Badge key={trimmedTag} variation="outline" size="small">
+                            <Badge key={index} variation="outline" size="small">
                               #{trimmedTag}
                             </Badge>
                           );

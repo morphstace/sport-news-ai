@@ -45,7 +45,7 @@ export default function Navbar({ user, isAdmin, userProfile, onLoginClick, onSig
       <Flex alignItems="center" gap="1rem">
         <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="navbar-logo">
-            <img src="/public/logo.png" alt="Logo" style={{ height: '32px', verticalAlign: 'middle' }} />
+            <img src="/logo.png" alt="Logo" style={{ height: '32px', verticalAlign: 'middle' }} />
             <span
               className="app-name"
               style={{ cursor: 'pointer' }}

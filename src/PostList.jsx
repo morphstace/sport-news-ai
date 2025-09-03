@@ -1,20 +1,19 @@
-import { useState, useEffect } from 'react';
-import {
-    Button,
-    Heading,
-    Flex,
-    Card,
-    Text,
-    Badge,
-    Grid,
-    Alert,
-    Image,
-    View
-} from '@aws-amplify/ui-react';
+import React, { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import { getCurrentUser } from 'aws-amplify/auth';
-import { checkIfUserIsAdmin } from './utils/authUtils';
 import { useNavigate } from 'react-router-dom';
+import {
+    View,
+    Text,
+    Button,
+    Flex,
+    Card,
+    Heading,
+    Divider,
+    Badge,
+    Image,
+    Alert
+} from '@aws-amplify/ui-react';
 
 const client = generateClient({ authMode: "userPool" });
 
@@ -27,229 +26,220 @@ export default function PostList({ onBack, onCreateNew, onEditPost, signOut }) {
     const navigate = useNavigate();
 
     useEffect(() => {
-        fetchPosts();
+        const initialize = async () => {
+            try {
+                const user = await getCurrentUser();
+                setCurrentUser(user);
+                
+                // Verifica se è admin (puoi personalizzare questa logica)
+                setIsAdmin(false); // o la tua logica per verificare admin
+                
+                await fetchPosts();
+            } catch (error) {
+                console.error('Error initializing:', error);
+                setError('Errore durante l\'inizializzazione');
+            }
+        };
+
+        initialize();
     }, []);
 
     const fetchPosts = async () => {
-        setIsLoading(true);
         try {
-            const user = await getCurrentUser();
-            const isUserAdmin = await checkIfUserIsAdmin();
+            setIsLoading(true);
+            const { data: posts } = await client.models.Post.list({
+                authMode: 'userPool'
+            });
             
-            let postsQuery;
-            if (isUserAdmin) {
-                // Admin vede tutti i post
-                postsQuery = await client.models.Post.list();
-            } else {
-                // Utente normale vede solo i suoi post
-                postsQuery = await client.models.Post.list({
-                    filter: { authorId: { eq: user.userId } }
-                });
-            }
-
-            const { data: posts } = postsQuery;
+            // Ordina i post per data di pubblicazione (più recenti prima)
             const sortedPosts = posts.sort((a, b) => 
                 new Date(b.publishedAt) - new Date(a.publishedAt)
             );
             
             setPosts(sortedPosts);
-            setCurrentUser(user);
-            setIsAdmin(isUserAdmin);
-        } catch (err) {
-            console.error('Error fetching posts:', err);
-            setError('Failed to load posts');
+            setError('');
+        } catch (error) {
+            console.error('Error fetching posts:', error);
+            setError('Errore durante il caricamento dei post');
         } finally {
             setIsLoading(false);
         }
     };
 
     const deletePost = async (postId) => {
-        if (!confirm('Are you sure you want to delete this post?')) {
+        if (!window.confirm('Sei sicuro di voler eliminare questo post?')) {
             return;
         }
 
         try {
             await client.models.Post.delete({ id: postId });
             setPosts(posts.filter(post => post.id !== postId));
-        } catch (err) {
-            console.error('Error deleting post:', err);
-            setError('Failed to delete post');
+        } catch (error) {
+            console.error('Error deleting post:', error);
+            alert('Errore durante l\'eliminazione del post');
         }
     };
 
     const formatDate = (dateString) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        if (!dateString) return '';
+        try {
+            return new Date(dateString).toLocaleDateString('it-IT', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch {
+            return dateString;
+        }
     };
 
-    const getCategoryColor = (category) => {
-        const colors = {
-            sports: 'blue',
-            politics: 'red',
-            technology: 'green',
-            entertainment: 'orange',
-            business: 'purple'
-        };
-        return colors[category] || 'gray';
+    const truncateContent = (content, maxLength = 150) => {
+        if (!content) return '';
+        if (content.length <= maxLength) return content;
+        return content.substring(0, maxLength) + '...';
     };
 
     let content;
+    
     if (isLoading) {
         content = (
-            <Flex justifyContent="center" alignItems="center" height="200px">
-                <Text>Loading posts...</Text>
-            </Flex>
+            <View textAlign="center" padding="2rem">
+                <Text>Caricamento post...</Text>
+            </View>
+        );
+    } else if (error) {
+        content = (
+            <Alert variation="error" isDismissible={false}>
+                {error}
+                <Button onClick={fetchPosts} size="small" marginTop="1rem">
+                    Riprova
+                </Button>
+            </Alert>
         );
     } else if (posts.length === 0) {
         content = (
-            /* Empty State */
-            <Card padding="3rem" textAlign="center">
-                <Heading level={3} marginBottom="1rem">No posts yet</Heading>
-                <Text marginBottom="2rem">You haven't created any posts yet. Start by creating your first post!</Text>
-                <Button variation="primary" onClick={onCreateNew}>
-                    Create Your First Post
+            <View textAlign="center" padding="3rem">
+                <Heading level={3}>Nessun post trovato</Heading>
+                <Text>Non ci sono ancora post pubblicati.</Text>
+                <Button 
+                    onClick={onCreateNew}
+                    variation="primary" 
+                    marginTop="1rem"
+                >
+                    Crea il primo post
                 </Button>
-            </Card>
+            </View>
         );
     } else {
         content = (
-            /* Posts Grid */
-            <Grid
-                templateColumns="repeat(auto-fill, minmax(350px, 1fr))"
-                gap="1.5rem"
-            >
+            <View>
                 {posts.map((post) => (
-                    <Card
-                        key={post.id}
-                        padding="1.5rem"
-                        margin="0.5rem 0"
-                        width="100%"
-                        variation="outlined"
-                    >
+                    <Card key={post.id} marginBottom="1.5rem" padding="1.5rem">
                         <Flex direction="column" gap="1rem">
+                            {/* Header del post */}
                             <Flex justifyContent="space-between" alignItems="flex-start">
                                 <View flex="1">
-                                    <Heading level={4} marginBottom="0.5rem">
+                                    <Heading level={4} margin="0 0 0.5rem 0">
                                         {post.title}
                                     </Heading>
-                                    <Text fontSize="small" color="gray" marginBottom="0.5rem">
-                                        {formatDate(post.publishedAt)}
-                                    </Text>
-                                    <Badge 
-                                        size="small" 
-                                        backgroundColor={getCategoryColor(post.category)}
-                                        color="white"
-                                        marginBottom="0.5rem"
-                                    >
-                                        {post.category.toUpperCase()}
-                                    </Badge>
+                                    <Flex gap="1rem" alignItems="center">
+                                        <Text fontSize="0.875rem" color="gray">
+                                            📅 {formatDate(post.publishedAt)}
+                                        </Text>
+                                        {post.authorId && (
+                                            <Text fontSize="0.875rem" color="gray">
+                                                👤 {post.authorId}
+                                            </Text>
+                                        )}
+                                    </Flex>
                                 </View>
                                 
-                                {/* Post Image Thumbnail */}
-                                {post.imageUrl && (
-                                    <Image
-                                        src={post.imageUrl}
-                                        alt={post.title}
-                                        width="100px"
-                                        height="100px"
-                                        objectFit="cover"
-                                        borderRadius="8px"
-                                        marginLeft="1rem"
-                                    />
-                                )}
+                                {/* Pulsanti azioni */}
+                                <Flex gap="0.5rem">
+                                    {(isAdmin || (currentUser && post.authorId === currentUser.userId)) && (
+                                        <>
+                                            <Button
+                                                size="small"
+                                                onClick={() => onEditPost(post)}
+                                                variation="primary"
+                                            >
+                                                ✏️ Modifica
+                                            </Button>
+                                            <Button
+                                                size="small"
+                                                onClick={() => deletePost(post.id)}
+                                                variation="destructive"
+                                            >
+                                                🗑️ Elimina
+                                            </Button>
+                                        </>
+                                    )}
+                                </Flex>
                             </Flex>
-                            
-                            <Text fontSize="small" color="gray">
-                                {post.content.length > 150 
-                                    ? `${post.content.substring(0, 150)}...` 
-                                    : post.content
-                                }
+
+                            {/* Immagine */}
+                            {post.imageUrl && (
+                                <Image
+                                    src={post.imageUrl}
+                                    alt={post.title}
+                                    maxHeight="200px"
+                                    objectFit="cover"
+                                    borderRadius="8px"
+                                />
+                            )}
+
+                            {/* Contenuto */}
+                            <Text lineHeight="1.6">
+                                {truncateContent(post.content, 200)}
                             </Text>
-                            
+
+                            {/* Tags */}
                             {post.tags && (
                                 <Flex gap="0.5rem" wrap="wrap">
-                                    {post.tags.split(',').map((tag) => {
-                                        const trimmedTag = tag.trim();
-                                        return (
-                                            <Badge key={trimmedTag} variation="outline" size="small">
-                                                #{trimmedTag}
-                                            </Badge>
-                                        );
-                                    })}
+                                    {post.tags.split(',').map((tag, index) => (
+                                        <Badge key={index} size="small" variation="info">
+                                            {tag.trim()}
+                                        </Badge>
+                                    ))}
                                 </Flex>
                             )}
-                            
-                            <Flex gap="0.5rem" justifyContent="flex-end">
-                                <Button 
-                                    size="small" 
-                                    variation="primary"
-                                    onClick={() => navigate(`/post/${post.id}`)}
-                                >
-                                    View
-                                </Button>
-                                {(currentUser?.userId === post.authorId || isAdmin) && (
-                                    <>
-                                        <Button 
-                                            size="small" 
-                                            variation="link"
-                                            onClick={() => onEditPost(post)}
-                                        >
-                                            Edit
-                                        </Button>
-                                        <Button 
-                                            size="small" 
-                                            variation="destructive"
-                                            onClick={() => deletePost(post.id)}
-                                        >
-                                            Delete
-                                        </Button>
-                                    </>
-                                )}
-                            </Flex>
                         </Flex>
                     </Card>
                 ))}
-            </Grid>
+            </View>
         );
     }
 
     return (
-        <Flex
-            className='App'
-            justifyContent='center'
-            alignItems="center"
-            direction="column"
-            width="70%"
-            margin="0 auto"
-            padding="2rem"
-        >
+        <View>
             {/* Header */}
             <Flex justifyContent="space-between" alignItems="center" marginBottom="2rem">
-                <Heading level={1}>My Posts ({posts.length})</Heading>
+                <Heading level={2}>📰 Lista Post ({posts.length})</Heading>
                 <Flex gap="1rem">
-                    <Button variation="primary" onClick={onCreateNew}>
-                        + Create New Post
+                    <Button onClick={onCreateNew} variation="primary">
+                        ➕ Nuovo Post
                     </Button>
-                    <Button variation="link" onClick={onBack}>
-                        ← Back to Profile
+                    <Button onClick={onBack} variation="link">
+                        ← Indietro
                     </Button>
-                    <Button onClick={signOut}>Sign Out</Button>
                 </Flex>
             </Flex>
 
-            {/* Error Alert */}
-            {error && (
-                <Alert variation="error" marginBottom="1rem">
-                    {error}
-                </Alert>
-            )}
+            <Divider marginBottom="2rem" />
 
+            {/* Contenuto */}
             {content}
-        </Flex>
+
+            {/* Pulsante refresh se ci sono post */}
+            {posts.length > 0 && (
+                <Flex justifyContent="center" marginTop="2rem">
+                    <Button onClick={fetchPosts} variation="outline" size="small">
+                        🔄 Aggiorna
+                    </Button>
+                </Flex>
+            )}
+        </View>
     );
 }

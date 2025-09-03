@@ -1,340 +1,411 @@
-import { useEffect, useState } from 'react';
-import {
-    Button,
-    Heading,
-    Flex,
-    TextField,
-    TextAreaField,
-    SelectField,
-    Card,
-    Alert,
-    View,
-    Image,
-    Text
-} from '@aws-amplify/ui-react';
+import React, { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/data';
-import { getCurrentUser, fetchUserAttributes } from 'aws-amplify/auth';
-import { uploadData, getUrl, remove } from 'aws-amplify/storage';
+import { uploadData, getUrl } from 'aws-amplify/storage';
+import { getCurrentUser } from 'aws-amplify/auth';
+import CrawlerPanel from './CrawlerPanel';
+import { 
+  Button,
+  Heading,
+  TextField,
+  TextAreaField,
+  Flex,
+  View,
+  Alert
+} from '@aws-amplify/ui-react';
 
-const client = generateClient({ authMode: "userPool" });
+const client = generateClient({
+  authMode: "userPool",
+});
 
-export default function PostEditor({ onBack, signOut, editingPost = null }) {
-    const [post, setPost] = useState({
+function PostEditor({ onBack, editingPost }) {
+  const [formData, setFormData] = useState({
+    title: '',
+    content: '',
+    imageUrl: '',
+    tags: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [showCrawler, setShowCrawler] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  useEffect(() => {
+    if (editingPost) {
+      setFormData({
+        title: editingPost.title || '',
+        content: editingPost.content || '',
+        imageUrl: editingPost.imageUrl || '',
+        tags: editingPost.tags || ''
+      });
+    } else {
+      setFormData({
         title: '',
         content: '',
-        category: '',
-        tags: '',
-        imageUrl: ''
-    });
+        imageUrl: '',
+        tags: ''
+      });
+    }
+  }, [editingPost]);
 
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
-    const [imageFile, setImageFile] = useState(null);
-    const [imagePreview, setImagePreview] = useState(null);
-    const [uploadingImage, setUploadingImage] = useState(false);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!formData.title.trim() || !formData.content.trim()) {
+      alert('Titolo e contenuto sono obbligatori');
+      return;
+    }
 
-    const isEditing = !!editingPost;
+    setLoading(true);
 
-    useEffect(() => {
-        if (editingPost && editingPost.id) {
-            setPost({
-                title: editingPost.title || '',
-                content: editingPost.content || '',
-                category: editingPost.category || '',
-                tags: editingPost.tags || '',
-                imageUrl: editingPost.imageUrl || ''
-            });
-            
-            // Se c'è un'immagine esistente, impostala come preview
-            if (editingPost.imageUrl) {
-                setImagePreview(editingPost.imageUrl);
-            }
-        } else {
-            setPost({
-                title: '',
-                content: '',
-                category: '',
-                tags: '',
-                imageUrl: ''
-            });
-            setImagePreview(null);
+    try {
+      const currentUser = await getCurrentUser();
+      
+      const postData = {
+        title: formData.title.trim(),
+        content: formData.content.trim(),
+        tags: formData.tags.trim(),
+        publishedAt: new Date().toISOString(),
+        authorId: currentUser.userId || currentUser.username
+      };
+
+      if (formData.imageUrl) {
+        postData.imageUrl = formData.imageUrl;
+      }
+
+      if (editingPost?.id) {
+        // Aggiorna post esistente
+        const result = await client.models.Post.update({
+          id: editingPost.id,
+          ...postData
+        });
+        console.log('✅ Post aggiornato:', result);
+      } else {
+        // Crea nuovo post
+        const result = await client.models.Post.create(postData);
+        console.log('✅ Post creato:', result);
+      }
+
+      // Torna alla lista dei post
+      onBack();
+      
+    } catch (error) {
+      console.error('❌ Errore nel salvataggio:', error);
+      alert('Errore nel salvataggio del post: ' + (error.message || error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleCrawledArticle = (article) => {
+    const autoTags = generateAutoTags(article);
+    
+    setFormData(prev => ({
+      ...prev,
+      title: article.title,
+      content: article.content,
+      tags: autoTags
+    }));
+    setShowCrawler(false);
+  };
+
+  const generateAutoTags = (article) => {
+    const tags = [];
+    
+    if (article.source) {
+      if (article.source.includes('gazzetta')) tags.push('Gazzetta dello Sport');
+      if (article.source.includes('corriere')) tags.push('Corriere dello Sport');
+      if (article.source.includes('tuttosport')) tags.push('Tuttosport');
+    }
+    
+    const content = (article.title + ' ' + article.content).toLowerCase();
+    
+    if (content.includes('calcio') || content.includes('serie a')) tags.push('Calcio');
+    if (content.includes('juventus') || content.includes('juve')) tags.push('Juventus');
+    if (content.includes('inter') || content.includes('nerazzurr')) tags.push('Inter');
+    if (content.includes('milan') || content.includes('rossoneri')) tags.push('Milan');
+    if (content.includes('roma')) tags.push('Roma');
+    if (content.includes('napoli')) tags.push('Napoli');
+    if (content.includes('basket')) tags.push('Basket');
+    if (content.includes('tennis')) tags.push('Tennis');
+    if (content.includes('formula 1') || content.includes('f1')) tags.push('Formula 1');
+    
+    return tags.join(', ');
+  };
+
+  const handleImageUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Per favore seleziona solo file immagine');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('L\'immagine è troppo grande. Massimo 5MB');
+      return;
+    }
+
+    setUploadingImage(true);
+
+    try {
+      const fileExtension = file.name.split('.').pop();
+      const fileName = `posts/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExtension}`;
+
+      const result = await uploadData({
+        key: fileName,
+        data: file,
+        options: {
+          contentType: file.type,
+          accessLevel: 'guest'
         }
-        setImageFile(null);
-    }, [editingPost]);
+      }).result;
 
-    const handleImageChange = (event) => {
-        const file = event.target.files[0];
-        if (file) {
-            // Verifica che sia un'immagine
-            if (!file.type.startsWith('image/')) {
-                setError('Please select an image file');
-                return;
-            }
-            
-            // Verifica la dimensione (max 5MB)
-            if (file.size > 5 * 1024 * 1024) {
-                setError('Image size must be less than 5MB');
-                return;
-            }
-
-            setImageFile(file);
-            
-            // Crea preview
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                setImagePreview(e.target.result);
-            };
-            reader.readAsDataURL(file);
-            
-            setError('');
+      const urlResult = await getUrl({
+        key: result.key,
+        options: {
+          accessLevel: 'guest'
         }
-    };
+      });
 
-    const uploadImage = async (userId) => {
-        if (!imageFile) return null;
+      setFormData(prev => ({
+        ...prev,
+        imageUrl: urlResult.url.toString()
+      }));
 
-        console.log('Starting image upload...');
-        setUploadingImage(true);
-        try {
-            const fileExtension = imageFile.name.split('.').pop();
-            const fileName = `post-images/${userId}/${Date.now()}.${fileExtension}`;
+    } catch (error) {
+      console.error('❌ Errore nel caricamento dell\'immagine:', error);
+      alert('Errore nel caricamento dell\'immagine: ' + error.message);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const removeImage = () => {
+    setFormData(prev => ({
+      ...prev,
+      imageUrl: ''
+    }));
+  };
+
+  const suggestedTags = [
+    'Calcio', 'Serie A', 'Champions League', 'Europa League',
+    'Juventus', 'Inter', 'Milan', 'Roma', 'Napoli', 'Lazio',
+    'Basket', 'Tennis', 'Formula 1', 'MotoGP', 'Ciclismo',
+    'Olimpiadi', 'Nazionale', 'Mercato'
+  ];
+
+  const addSuggestedTag = (tag) => {
+    const currentTags = formData.tags.split(',').map(t => t.trim()).filter(t => t);
+    if (!currentTags.includes(tag)) {
+      const newTags = [...currentTags, tag].join(', ');
+      setFormData(prev => ({
+        ...prev,
+        tags: newTags
+      }));
+    }
+  };
+
+  return (
+    <Flex direction="column" padding="2rem" maxWidth="800px" margin="0 auto">
+      <Flex justifyContent="space-between" alignItems="center" marginBottom="2rem">
+        <Heading level={2}>
+          {editingPost ? 'Modifica Post' : 'Nuovo Post'}
+        </Heading>
+        <Flex gap="1rem">
+          <Button 
+            onClick={() => setShowCrawler(!showCrawler)}
+            variation={showCrawler ? "destructive" : "primary"}
+            size="small"
+          >
+            {showCrawler ? '❌ Chiudi Crawler' : '🕷️ Usa Crawler'}
+          </Button>
+          <Button 
+            onClick={onBack}
+            variation="link"
+            size="small"
+          >
+            Annulla
+          </Button>
+        </Flex>
+      </Flex>
+
+      {showCrawler && (
+        <View marginBottom="2rem">
+          <CrawlerPanel 
+            onArticleCrawled={handleCrawledArticle}
+            skipSave={true}
+          />
+        </View>
+      )}
+
+      <form onSubmit={handleSubmit}>
+        <Flex direction="column" gap="1.5rem">
+          <TextField
+            label="Titolo"
+            name="title"
+            value={formData.title}
+            onChange={handleInputChange}
+            required
+            placeholder="Inserisci il titolo del post..."
+          />
+
+          <View>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: '0.5rem', 
+              fontWeight: 'bold',
+              fontSize: '1rem'
+            }}>
+              Contenuto
+            </label>
+            <textarea
+              name="content"
+              value={formData.content}
+              onChange={handleInputChange}
+              required
+              rows={15}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '1px solid #ccc',
+                borderRadius: '6px',
+                fontSize: '1rem',
+                resize: 'vertical',
+                fontFamily: 'inherit'
+              }}
+              placeholder="Scrivi il contenuto del post..."
+            />
+          </View>
+
+          <View>
+            <TextField
+              label="Tags"
+              name="tags"
+              value={formData.tags}
+              onChange={handleInputChange}
+              placeholder="Calcio, Serie A, Juventus..."
+            />
             
-            console.log('Upload fileName:', fileName);
+            <View marginTop="0.5rem">
+              <View marginBottom="0.5rem" fontSize="0.875rem" fontWeight="bold">
+                Tag suggeriti:
+              </View>
+              <Flex wrap="wrap" gap="0.25rem">
+                {suggestedTags.map(tag => (
+                  <Button
+                    key={tag}
+                    size="small"
+                    variation={formData.tags.includes(tag) ? "primary" : "outline"}
+                    onClick={() => addSuggestedTag(tag)}
+                    style={{
+                      fontSize: '0.75rem',
+                      padding: '0.25rem 0.5rem',
+                      borderRadius: '1rem'
+                    }}
+                  >
+                    {tag}
+                  </Button>
+                ))}
+              </Flex>
+            </View>
+          </View>
 
-            const result = await uploadData({
-                key: fileName,
-                data: imageFile,
-                options: {
-                    contentType: imageFile.type,
-                    accessLevel: 'guest' // Questo è importante!
-                }
-            });
-
-            console.log('Upload result:', result);
-
-            // Aspetta che l'upload sia completato
-            await result.result;
-
-            // Ottieni l'URL pubblico
-            const urlResult = await getUrl({
-                key: fileName,
-                options: {
-                    accessLevel: 'guest', // Anche questo!
-                    expiresIn: 31536000 // 1 year
-                }
-            });
-
-            console.log('URL result:', urlResult);
-            const finalUrl = urlResult.url.toString();
-            console.log('Final URL:', finalUrl);
-
-            return finalUrl;
-        } catch (error) {
-            console.error('Error uploading image:', error);
-            throw new Error('Failed to upload image: ' + error.message);
-        } finally {
-            setUploadingImage(false);
-        }
-    };
-
-    const removeCurrentImage = () => {
-        setImageFile(null);
-        setImagePreview(null);
-        setPost({ ...post, imageUrl: '' });
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setIsLoading(true);
-        setError('');
-        setSuccess('');
-
-        try {
-            const user = await getCurrentUser();
-            const userAttributes = await fetchUserAttributes();
-            const userId = user?.userId || user?.username || userAttributes?.sub || '';
+          <View>
+            <View marginBottom="1rem" fontSize="1rem" fontWeight="bold">
+              Immagine
+            </View>
             
-            let imageUrl = post.imageUrl;
-
-            // Se c'è una nuova immagine da caricare
-            if (imageFile) {
-                // Se stiamo editando e c'era già un'immagine, rimuoviamo la vecchia
-                if (isEditing && post.imageUrl) {
-                    try {
-                        const oldKey = post.imageUrl.split('/').slice(-3).join('/');
-                        await remove({ key: oldKey });
-                    } catch (error) {
-                        console.warn('Could not remove old image:', error);
-                    }
-                }
-
-                imageUrl = await uploadImage(userId);
-            }
-            
-            const postData = {
-                title: post.title,
-                content: post.content,
-                category: post.category,
-                tags: post.tags,
-                imageUrl: imageUrl
-            };
-
-            if (isEditing) {
-                const result = await client.models.Post.update({
-                    id: editingPost.id,
-                    ...postData
-                });
-                setSuccess('Post updated successfully!');
-            } else {
-                const result = await client.models.Post.create({
-                    ...postData,
-                    publishedAt: new Date().toISOString(),
-                    authorId: userId
-                });
-                setSuccess('Post created successfully!');
-            }
-            
-            if (!isEditing) {
-                setPost({ title: '', content: '', category: '', tags: '', imageUrl: '' });
-                setImageFile(null);
-                setImagePreview(null);
-            }
-            
-            setTimeout(() => {
-                onBack();
-            }, 2000);
-        } catch (error) {
-            console.error('Error submitting post:', error);
-            setError(`Failed to ${isEditing ? 'update' : 'create'} post: ${error.message}`);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    return (
-        <Flex
-            direction="column"
-            padding="2rem"
-            maxWidth="800px"
-            margin="0 auto"
-        >
-            <Flex justifyContent="space-between" alignItems="center" marginBottom="2rem">
-                <Heading level={1}>
-                    {isEditing ? `Edit Post: ${post.title || 'Untitled'}` : 'Create New Post'}
-                </Heading>
-                <Flex gap="1rem">
-                    <Button variation='link' onClick={onBack}>
-                        Back to Profile
-                    </Button>
-                    <Button onClick={signOut}>Sign Out</Button>
-                </Flex>
+            <Flex gap="0.5rem" marginBottom="1rem">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                disabled={uploadingImage}
+                style={{ display: 'none' }}
+                id="image-upload"
+              />
+              <Button 
+                as="label" 
+                htmlFor="image-upload"
+                variation="primary"
+                isDisabled={uploadingImage}
+              >
+                {uploadingImage ? '📤 Caricando...' : '📁 Carica Immagine'}
+              </Button>
+              
+              {formData.imageUrl && (
+                <Button
+                  onClick={removeImage}
+                  variation="destructive"
+                >
+                  🗑️ Rimuovi
+                </Button>
+              )}
             </Flex>
 
-            {error && (
-                <Alert variation="error" marginBottom="1rem">
-                    {error}
-                </Alert>
+            {formData.imageUrl ? (
+              <View 
+                border="2px dashed #ccc"
+                borderRadius="8px"
+                padding="1rem"
+                textAlign="center"
+              >
+                <img 
+                  src={formData.imageUrl} 
+                  alt="Preview" 
+                  style={{ 
+                    maxWidth: '100%',
+                    maxHeight: '300px',
+                    objectFit: 'contain',
+                    borderRadius: '4px'
+                  }}
+                />
+              </View>
+            ) : (
+              <View
+                border="2px dashed #ccc"
+                borderRadius="8px"
+                padding="2rem"
+                textAlign="center"
+                color="#666"
+                backgroundColor="#f8f9fa"
+              >
+                <View>📷 Nessuna immagine selezionata</View>
+                <View fontSize="0.875rem" marginTop="0.5rem">
+                  Formati supportati: JPG, PNG, GIF, WebP (max 5MB)
+                </View>
+              </View>
             )}
+          </View>
 
-            {success && (
-                <Alert variation="success" marginBottom="1rem">
-                    {success}
-                </Alert>
-            )}
-
-            <Card padding="2rem">
-                <Flex as="form" onSubmit={handleSubmit} direction="column" gap="1.5rem">
-                    <TextField
-                        label="Post Title"
-                        placeholder="Enter news title ..."
-                        value={post.title}
-                        onChange={(e) => setPost({ ...post, title: e.target.value })}
-                        required
-                    />
-
-                    <SelectField
-                        label="Category"
-                        value={post.category}
-                        onChange={(e) => setPost({ ...post, category: e.target.value })}
-                        required
-                    >
-                        <option value="">Select a category</option>
-                        <option value="sports">Sports</option>
-                        <option value="politics">Politics</option>
-                        <option value="technology">Technology</option>
-                    </SelectField>
-
-                    <TextField
-                        label="Tags"
-                        placeholder="Enter tags (comma separated)"
-                        value={post.tags}
-                        onChange={(e) => setPost({ ...post, tags: e.target.value })}
-                    />
-
-                    {/* Image Upload Section */}
-                    <View>
-                        <Text fontWeight="bold" marginBottom="0.5rem">Post Image (Optional)</Text>
-                        
-                        {imagePreview && (
-                            <Flex direction="column" gap="1rem" marginBottom="1rem">
-                                <Image
-                                    src={imagePreview}
-                                    alt="Preview"
-                                    maxHeight="200px"
-                                    objectFit="cover"
-                                    borderRadius="8px"
-                                />
-                                <Button
-                                    type="button"
-                                    variation="destructive"
-                                    size="small"
-                                    onClick={removeCurrentImage}
-                                >
-                                    Remove Image
-                                </Button>
-                            </Flex>
-                        )}
-                        
-                        <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageChange}
-                            style={{
-                                padding: '0.5rem',
-                                border: '1px solid #ddd',
-                                borderRadius: '4px',
-                                width: '100%'
-                            }}
-                        />
-                        <Text fontSize="small" color="gray" marginTop="0.25rem">
-                            Supported formats: JPG, PNG, GIF. Max size: 5MB
-                        </Text>
-                    </View>
-                    
-                    <TextAreaField
-                        label="Content"
-                        placeholder="Enter post content ..."
-                        value={post.content}
-                        onChange={(e) => setPost({ ...post, content: e.target.value })}
-                        rows={10}
-                        required
-                    />
-
-                    <Flex gap="1rem" justifyContent="flex-end">
-                        <Button type="button" variation="link" onClick={onBack}>
-                            Cancel
-                        </Button>
-                        <Button 
-                            type="submit" 
-                            variation='primary' 
-                            isLoading={isLoading || uploadingImage}
-                        >
-                            {uploadingImage ? 'Uploading...' : (isEditing ? 'Update Post' : 'Submit Post')}
-                        </Button>
-                    </Flex>
-                </Flex>
-            </Card>
+          <Flex justifyContent="flex-end" gap="1rem" marginTop="2rem">
+            <Button
+              onClick={onBack}
+              variation="outline"
+            >
+              Annulla
+            </Button>
+            <Button
+              type="submit"
+              variation="primary"
+              isLoading={loading}
+              isDisabled={uploadingImage}
+            >
+              {loading ? 'Salvando...' : (editingPost ? '💾 Aggiorna Post' : '🚀 Pubblica Post')}
+            </Button>
+          </Flex>
         </Flex>
-    )
+      </form>
+    </Flex>
+  );
 }
+
+export default PostEditor;
