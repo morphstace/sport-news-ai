@@ -8,7 +8,9 @@ import {
     Badge,
     Divider,
     Grid,
-    Alert
+    Alert,
+    Image,
+    View
 } from '@aws-amplify/ui-react';
 import { generateClient } from 'aws-amplify/data';
 import { getCurrentUser } from 'aws-amplify/auth';
@@ -98,10 +100,13 @@ export default function PostList({ onBack, onCreateNew, onEditPost, signOut }) {
 
     return (
         <Flex
+            className='App'
+            justifyContent='center'
+            alignItems="center"
             direction="column"
-            padding="2rem"
-            maxWidth="1000px"
+            width="70%"
             margin="0 auto"
+            padding="2rem"
         >
             {/* Header */}
             <Flex justifyContent="space-between" alignItems="center" marginBottom="2rem">
@@ -145,66 +150,90 @@ export default function PostList({ onBack, onCreateNew, onEditPost, signOut }) {
                     gap="1.5rem"
                 >
                     {posts.map((post) => (
-                        <Card key={post.id} padding="1.5rem">
-                            {/* Post Header */}
-                            <Flex justifyContent="space-between" alignItems="flex-start" marginBottom="1rem">
-                                <Badge variation={getCategoryColor(post.category)} size="small">
-                                    {post.category}
-                                </Badge>
-                                <Text fontSize="small" color="gray">
-                                    {formatDate(post.publishedAt)}
-                                </Text>
-                            </Flex>
-
-                            {/* Post Title */}
-                            <Heading level={4} marginBottom="0.5rem">
-                                {post.title}
-                            </Heading>
-
-                            {/* Post Content Preview */}
-                            <Text 
-                                marginBottom="1rem" 
-                                color="gray"
-                                style={{ 
-                                    display: '-webkit-box',
-                                    WebkitLineClamp: 3,
-                                    WebkitBoxOrient: 'vertical',
-                                    overflow: 'hidden'
-                                }}
-                            >
-                                {post.content}
-                            </Text>
-
-                            {/* Tags */}
-                            {post.tags && (
-                                <Flex gap="0.5rem" marginBottom="1rem" wrap="wrap">
-                                    {post.tags.split(',').map((tag, index) => (
-                                        <Badge key={index} variation="outline" size="small">
-                                            #{tag.trim()}
+                        <Card
+                            key={post.id}
+                            padding="1.5rem"
+                            margin="0.5rem 0"
+                            width="100%"
+                            variation="outlined"
+                        >
+                            <Flex direction="column" gap="1rem">
+                                <Flex justifyContent="space-between" alignItems="flex-start">
+                                    <View flex="1">
+                                        <Heading level={4} marginBottom="0.5rem">
+                                            {post.title}
+                                        </Heading>
+                                        <Text fontSize="small" color="gray" marginBottom="0.5rem">
+                                            {formatDate(post.publishedAt)}
+                                        </Text>
+                                        <Badge 
+                                            size="small" 
+                                            backgroundColor={getCategoryColor(post.category)}
+                                            color="white"
+                                            marginBottom="0.5rem"
+                                        >
+                                            {post.category.toUpperCase()}
                                         </Badge>
-                                    ))}
+                                    </View>
+                                    
+                                    {/* Post Image Thumbnail */}
+                                    {post.imageUrl && (
+                                        <Image
+                                            src={post.imageUrl}
+                                            alt={post.title}
+                                            width="100px"
+                                            height="100px"
+                                            objectFit="cover"
+                                            borderRadius="8px"
+                                            marginLeft="1rem"
+                                        />
+                                    )}
                                 </Flex>
-                            )}
-
-                            <Divider marginBottom="1rem" />
-
-                            {/* Post Actions */}
-                            <Flex gap="0.5rem" justifyContent="flex-end">
-                                <Button 
-                                    size="small" 
-                                    variation="link"
-                                    onClick={() => onEditPost(post)}
-                                >
-                                    Edit
-                                </Button>
-                                <Button 
-                                    size="small" 
-                                    variation="link" 
-                                    colorTheme="error"
-                                    onClick={() => deletePost(post.id)}
-                                >
-                                    Delete
-                                </Button>
+                                
+                                <Text fontSize="small" color="gray">
+                                    {post.content.length > 150 
+                                        ? `${post.content.substring(0, 150)}...` 
+                                        : post.content
+                                    }
+                                </Text>
+                                
+                                {post.tags && (
+                                    <Flex gap="0.5rem" wrap="wrap">
+                                        {post.tags.split(',').map((tag, idx) => (
+                                            <Badge key={idx} variation="outline" size="small">
+                                                #{tag.trim()}
+                                            </Badge>
+                                        ))}
+                                    </Flex>
+                                )}
+                                
+                                <Flex gap="0.5rem" justifyContent="flex-end">
+                                    <Button 
+                                        size="small" 
+                                        variation="primary"
+                                        onClick={() => window.open(`/post/${post.id}`, '_blank')}
+                                    >
+                                        View
+                                    </Button>
+                                    {(currentUser === post.authorId || isAdmin) && (
+                                        <>
+                                            <Button 
+                                                size="small" 
+                                                variation="link"
+                                                onClick={() => onEditPost(post)}
+                                            >
+                                                Edit
+                                            </Button>
+                                            <Button 
+                                                size="small" 
+                                                variation="destructive"
+                                                onClick={() => deletePost(post.id)}
+                                            >
+                                                Delete
+                                            </Button>
+                                        </>
+                                    )}
+                                </Flex>
                             </Flex>
                         </Card>
                     ))}

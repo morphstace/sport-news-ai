@@ -7,10 +7,14 @@ import {
     TextAreaField,
     SelectField,
     Card,
-    Alert
+    Alert,
+    View,
+    Image,
+    Text
 } from '@aws-amplify/ui-react';
 import { generateClient } from 'aws-amplify/data';
 import { getCurrentUser, fetchUserAttributes } from 'aws-amplify/auth';
+import { uploadData, getUrl, remove } from 'aws-amplify/storage';
 
 const client = generateClient({ authMode: "userPool" });
 
@@ -19,55 +23,126 @@ export default function PostEditor({ onBack, signOut, editingPost = null }) {
         title: '',
         content: '',
         category: '',
-        tags: ''
+        tags: '',
+        imageUrl: ''
     });
 
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [imageFile, setImageFile] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
+    const [uploadingImage, setUploadingImage] = useState(false);
 
     const isEditing = !!editingPost;
 
-    // Debug: Log dettagliato di editingPost
     useEffect(() => {
-        console.log('PostEditor useEffect triggered');
-        console.log('editingPost:', editingPost);
-        console.log('editingPost type:', typeof editingPost);
-        console.log('editingPost keys:', editingPost ? Object.keys(editingPost) : 'no keys');
-        
-        if (editingPost) {
-            console.log('editingPost.title:', editingPost.title);
-            console.log('editingPost.content:', editingPost.content);
-            console.log('editingPost.category:', editingPost.category);
-            console.log('editingPost.tags:', editingPost.tags);
-            console.log('editingPost.id:', editingPost.id);
-        }
-
         if (editingPost && editingPost.id) {
-            console.log('Setting post state with editingPost data');
-            const newPost = {
+            setPost({
                 title: editingPost.title || '',
                 content: editingPost.content || '',
                 category: editingPost.category || '',
-                tags: editingPost.tags || ''
-            };
-            console.log('New post state:', newPost);
-            setPost(newPost);
+                tags: editingPost.tags || '',
+                imageUrl: editingPost.imageUrl || ''
+            });
+            
+            // Se c'è un'immagine esistente, impostala come preview
+            if (editingPost.imageUrl) {
+                setImagePreview(editingPost.imageUrl);
+            }
         } else {
-            console.log('Resetting post state to empty');
             setPost({
                 title: '',
                 content: '',
                 category: '',
-                tags: ''
+                tags: '',
+                imageUrl: ''
             });
+            setImagePreview(null);
         }
-    }, [editingPost]); // Cambiamo la dipendenza a editingPost completo
+        setImageFile(null);
+    }, [editingPost]);
 
-    // Debug: Log dello stato post quando cambia
-    useEffect(() => {
-        console.log('Post state changed:', post);
-    }, [post]);
+    const handleImageChange = (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            // Verifica che sia un'immagine
+            if (!file.type.startsWith('image/')) {
+                setError('Please select an image file');
+                return;
+            }
+            
+            // Verifica la dimensione (max 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                setError('Image size must be less than 5MB');
+                return;
+            }
+
+            setImageFile(file);
+            
+            // Crea preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                setImagePreview(e.target.result);
+            };
+            reader.readAsDataURL(file);
+            
+            setError('');
+        }
+    };
+
+    const uploadImage = async (userId) => {
+        if (!imageFile) return null;
+
+        console.log('Starting image upload...');
+        setUploadingImage(true);
+        try {
+            const fileExtension = imageFile.name.split('.').pop();
+            const fileName = `post-images/${userId}/${Date.now()}.${fileExtension}`;
+            
+            console.log('Upload fileName:', fileName);
+
+            const result = await uploadData({
+                key: fileName,
+                data: imageFile,
+                options: {
+                    contentType: imageFile.type,
+                    accessLevel: 'guest' // Questo è importante!
+                }
+            });
+
+            console.log('Upload result:', result);
+
+            // Aspetta che l'upload sia completato
+            await result.result;
+
+            // Ottieni l'URL pubblico
+            const urlResult = await getUrl({
+                key: fileName,
+                options: {
+                    accessLevel: 'guest', // Anche questo!
+                    expiresIn: 31536000 // 1 year
+                }
+            });
+
+            console.log('URL result:', urlResult);
+            const finalUrl = urlResult.url.toString();
+            console.log('Final URL:', finalUrl);
+
+            return finalUrl;
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            throw new Error('Failed to upload image: ' + error.message);
+        } finally {
+            setUploadingImage(false);
+        }
+    };
+
+    const removeCurrentImage = () => {
+        setImageFile(null);
+        setImagePreview(null);
+        setPost({ ...post, imageUrl: '' });
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -76,67 +151,66 @@ export default function PostEditor({ onBack, signOut, editingPost = null }) {
         setSuccess('');
 
         try {
-            console.log('Getting current user...');
             const user = await getCurrentUser();
-            console.log('Current user object:', user);
-            console.log('Available user properties:', Object.keys(user));
-            
-            console.log('Fetching user attributes...');
             const userAttributes = await fetchUserAttributes();
-            console.log('User attributes:', userAttributes);
-            console.log('Available attribute keys:', Object.keys(userAttributes));
-            
-            // Test tutti i possibili ID
-            console.log('user.userId:', user?.userId);
-            console.log('user.username:', user?.username);
-            console.log('userAttributes.sub:', userAttributes?.sub);
-            
             const userId = user?.userId || user?.username || userAttributes?.sub || '';
-            console.log('Final userId chosen:', userId);
             
+            let imageUrl = post.imageUrl;
+
+            // Se c'è una nuova immagine da caricare
+            if (imageFile) {
+                // Se stiamo editando e c'era già un'immagine, rimuoviamo la vecchia
+                if (isEditing && post.imageUrl) {
+                    try {
+                        const oldKey = post.imageUrl.split('/').slice(-3).join('/');
+                        await remove({ key: oldKey });
+                    } catch (error) {
+                        console.warn('Could not remove old image:', error);
+                    }
+                }
+
+                imageUrl = await uploadImage(userId);
+            }
+            
+            const postData = {
+                title: post.title,
+                content: post.content,
+                category: post.category,
+                tags: post.tags,
+                imageUrl: imageUrl
+            };
+
             if (isEditing) {
-                console.log('Updating post:', editingPost.id, 'with data:', post);
                 const result = await client.models.Post.update({
                     id: editingPost.id,
-                    title: post.title,
-                    content: post.content,
-                    category: post.category,
-                    tags: post.tags
+                    ...postData
                 });
-                console.log('Update result:', result);
                 setSuccess('Post updated successfully!');
             } else {
-                console.log('Creating new post with userId:', userId);
                 const result = await client.models.Post.create({
-                    title: post.title,
-                    content: post.content,
-                    category: post.category,
-                    tags: post.tags,
+                    ...postData,
                     publishedAt: new Date().toISOString(),
                     authorId: userId
                 });
-                console.log('Create result:', result);
-                console.log('Created post authorId:', result?.data?.authorId);
                 setSuccess('Post created successfully!');
             }
             
             if (!isEditing) {
-                setPost({ title: '', content: '', category: '', tags: '' });
+                setPost({ title: '', content: '', category: '', tags: '', imageUrl: '' });
+                setImageFile(null);
+                setImagePreview(null);
             }
             
             setTimeout(() => {
                 onBack();
             }, 2000);
         } catch (error) {
-            console.error('Detailed error:', error);
+            console.error('Error submitting post:', error);
             setError(`Failed to ${isEditing ? 'update' : 'create'} post: ${error.message}`);
         } finally {
             setIsLoading(false);
         }
     };
-
-    // Debug render
-    console.log('Rendering PostEditor with post state:', post);
 
     return (
         <Flex
@@ -156,13 +230,6 @@ export default function PostEditor({ onBack, signOut, editingPost = null }) {
                     <Button onClick={signOut}>Sign Out</Button>
                 </Flex>
             </Flex>
-
-            {/* Debug info - rimuovi dopo aver risolto */}
-            {isEditing && (
-                <Alert variation="info" marginBottom="1rem">
-                    Debug: Editing post with ID: {editingPost?.id} | Title: "{post.title}"
-                </Alert>
-            )}
 
             {error && (
                 <Alert variation="error" marginBottom="1rem">
@@ -204,6 +271,46 @@ export default function PostEditor({ onBack, signOut, editingPost = null }) {
                         value={post.tags}
                         onChange={(e) => setPost({ ...post, tags: e.target.value })}
                     />
+
+                    {/* Image Upload Section */}
+                    <View>
+                        <Text fontWeight="bold" marginBottom="0.5rem">Post Image (Optional)</Text>
+                        
+                        {imagePreview && (
+                            <Flex direction="column" gap="1rem" marginBottom="1rem">
+                                <Image
+                                    src={imagePreview}
+                                    alt="Preview"
+                                    maxHeight="200px"
+                                    objectFit="cover"
+                                    borderRadius="8px"
+                                />
+                                <Button
+                                    type="button"
+                                    variation="destructive"
+                                    size="small"
+                                    onClick={removeCurrentImage}
+                                >
+                                    Remove Image
+                                </Button>
+                            </Flex>
+                        )}
+                        
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageChange}
+                            style={{
+                                padding: '0.5rem',
+                                border: '1px solid #ddd',
+                                borderRadius: '4px',
+                                width: '100%'
+                            }}
+                        />
+                        <Text fontSize="small" color="gray" marginTop="0.25rem">
+                            Supported formats: JPG, PNG, GIF. Max size: 5MB
+                        </Text>
+                    </View>
                     
                     <TextAreaField
                         label="Content"
@@ -218,8 +325,12 @@ export default function PostEditor({ onBack, signOut, editingPost = null }) {
                         <Button type="button" variation="link" onClick={onBack}>
                             Cancel
                         </Button>
-                        <Button type="submit" variation='primary' isLoading={isLoading}>
-                            {isEditing ? 'Update Post' : 'Submit Post'}
+                        <Button 
+                            type="submit" 
+                            variation='primary' 
+                            isLoading={isLoading || uploadingImage}
+                        >
+                            {uploadingImage ? 'Uploading...' : (isEditing ? 'Update Post' : 'Submit Post')}
                         </Button>
                     </Flex>
                 </Flex>
