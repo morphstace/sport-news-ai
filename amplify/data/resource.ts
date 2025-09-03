@@ -28,7 +28,8 @@ const schema = a.schema({
     })
     .authorization((allow) => [
       allow.group('admins').to(['create', 'read', 'update', 'delete']),
-      allow.authenticated().to(['create','read','update']),
+      allow.ownerDefinedIn("authorId").to(['read', 'update', 'delete']), // Aggiunto questo
+      allow.authenticated().to(['create', 'read']),
       allow.publicApiKey().to(['read'])
     ]),
 });

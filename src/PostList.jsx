@@ -192,7 +192,7 @@ export default function PostList({ onBack, onCreateNew, onEditPost, signOut }) {
                                 >
                                     View
                                 </Button>
-                                {(currentUser === post.authorId || isAdmin) && (
+                                {(currentUser?.userId === post.authorId || isAdmin) && (
                                     <>
                                         <Button 
                                             size="small" 

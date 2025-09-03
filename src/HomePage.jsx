@@ -92,94 +92,104 @@ export default function HomePage({ onLoginClick }) {
       <Flex direction="column" width="100%" gap="1rem">
         <Heading level={2} textAlign="center">Latest Sports News</Heading>
         
-        {isLoading ? (
-          <Text textAlign="center">Loading latest news...</Text>
-        ) : posts.length > 0 ? (
-          <Flex 
-            direction="row" 
-            wrap="wrap" 
-            gap="1.5rem" 
-            justifyContent="center"
-          >
-            {posts.map((post) => (
-              <Card
-                key={post.id}
-                padding="1.5rem"
-                maxWidth="350px"
-                minHeight="200px"
-                style={{ cursor: 'pointer' }}
-                onClick={() => navigate(`/post/${post.id}`)}
+        {/* Extracted conditional rendering */}
+        {(() => {
+          if (isLoading) {
+            return <Text textAlign="center">Loading latest news...</Text>;
+          }
+          if (posts.length > 0) {
+            return (
+              <Flex 
+                direction="row" 
+                wrap="wrap" 
+                gap="1.5rem" 
+                justifyContent="center"
               >
-                {/* Post Header */}
-                <Flex 
-                  justifyContent="space-between" 
-                  alignItems="center" 
-                  marginBottom="1rem"
-                >
-                  <Badge size="small">
-                    {post.category.toUpperCase()}
-                  </Badge>
-                  <Text fontSize="small" color="gray">
-                    {formatDate(post.publishedAt)}
-                  </Text>
-                </Flex>
-
-                {/* Post Title */}
-                <Heading level={4} marginBottom="0.5rem">
-                  {post.title}
-                </Heading>
-
-                {/* Author */}
-                <Text fontSize="small" color="gray" marginBottom="0.5rem">
-                  di {post.author.name}
-                </Text>
-
-                {/* Post Preview */}
-                <Text 
-                  color="gray" 
-                  marginBottom="1rem"
-                  style={{ 
-                    display: '-webkit-box',
-                    WebkitLineClamp: 3,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden'
-                  }}
-                >
-                  {post.content}
-                </Text>
-
-                {/* Tags */}
-                {post.tags && (
-                  <Flex gap="0.5rem" wrap="wrap">
-                    {post.tags.split(',').slice(0, 3).map((tag, index) => (
-                      <Badge key={index} variation="outline" size="small">
-                        #{tag.trim()}
+                {posts.map((post) => (
+                  <Card
+                    key={post.id}
+                    padding="1.5rem"
+                    maxWidth="350px"
+                    minHeight="200px"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => navigate(`/post/${post.id}`)}
+                  >
+                    {/* Post Header */}
+                    <Flex 
+                      justifyContent="space-between" 
+                      alignItems="center" 
+                      marginBottom="1rem"
+                    >
+                      <Badge size="small">
+                        {post.category.toUpperCase()}
                       </Badge>
-                    ))}
-                  </Flex>
-                )}
-              </Card>
-            ))}
-          </Flex>
-        ) : (
-          /* Fallback content quando non ci sono post */
-          <Flex direction="column" gap="1rem" textAlign="center">
-            <Text>No published news available yet.</Text>
-            <Text fontSize="small" color="gray">
-              Check back later for the latest sports updates!
-            </Text>
-            
-            {/* Sample content per mostrare il layout */}
-            <Divider margin="2rem 0" />
-            <Heading level={3}>Coming Soon</Heading>
-            <Flex direction="column" gap="0.5rem">
-              <Text>• Live match updates and scores</Text>
-              <Text>• Player transfer news and rumors</Text>
-              <Text>• Championship schedules and results</Text>
-              <Text>• Expert analysis and predictions</Text>
+                      <Text fontSize="small" color="gray">
+                        {formatDate(post.publishedAt)}
+                      </Text>
+                    </Flex>
+
+                    {/* Post Title */}
+                    <Heading level={4} marginBottom="0.5rem">
+                      {post.title}
+                    </Heading>
+
+                    {/* Author */}
+                    <Text fontSize="small" color="gray" marginBottom="0.5rem">
+                      di {post.author.name}
+                    </Text>
+
+                    {/* Post Preview */}
+                    <Text 
+                      color="gray" 
+                      marginBottom="1rem"
+                      style={{ 
+                        display: '-webkit-box',
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      {post.content}
+                    </Text>
+
+                    {/* Tags */}
+                    {post.tags && (
+                      <Flex gap="0.5rem" wrap="wrap">
+                        {post.tags.split(',').slice(0, 3).map((tag) => {
+                          const trimmedTag = tag.trim();
+                          return (
+                            <Badge key={trimmedTag} variation="outline" size="small">
+                              #{trimmedTag}
+                            </Badge>
+                          );
+                        })}
+                      </Flex>
+                    )}
+                  </Card>
+                ))}
+              </Flex>
+            );
+          }
+          // Fallback content quando non ci sono post
+          return (
+            <Flex direction="column" gap="1rem" textAlign="center">
+              <Text>No published news available yet.</Text>
+              <Text fontSize="small" color="gray">
+                Check back later for the latest sports updates!
+              </Text>
+              
+              {/* Sample content per mostrare il layout */}
+              <Divider margin="2rem 0" />
+              <Heading level={3}>Coming Soon</Heading>
+              <Flex direction="column" gap="0.5rem">
+                <Text>• Live match updates and scores</Text>
+                <Text>• Player transfer news and rumors</Text>
+                <Text>• Championship schedules and results</Text>
+                <Text>• Expert analysis and predictions</Text>
+              </Flex>
             </Flex>
-          </Flex>
-        )}
+          );
+        })()}
       </Flex>
     </Flex>
   );

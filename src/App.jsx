@@ -264,6 +264,10 @@ function AuthenticatedApp({signOut, user}) {
 
 export default function App() {
   const [showLogin, setShowLogin] = useState(false);
+  const location = useLocation();
+  
+  // Determina se siamo su una pagina di post
+  const isPostPage = location.pathname.startsWith('/post/');
   
   if (showLogin) {
     return (
@@ -318,14 +322,16 @@ export default function App() {
 
   return (
     <Flex direction="column" minHeight="100vh">
-      <Navbar 
-        user={null}
-        userRole="guest"
-        onLoginClick={() => setShowLogin(true)}
-        onSignOut={() => {}}
-        onNavigate={() => {}}
-        currentPage="home"
-      />
+      {!isPostPage && (
+        <Navbar 
+          user={null}
+          userRole="guest"
+          onLoginClick={() => setShowLogin(true)}
+          onSignOut={() => {}}
+          onNavigate={() => {}}
+          currentPage="home"
+        />
+      )}
       <Flex flex="1">
         <Routes>
           <Route path="/" element={<HomePage onLoginClick={() => setShowLogin(true)} />} />

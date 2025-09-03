@@ -1,12 +1,13 @@
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { generateClient } from 'aws-amplify/data';
-import { Card, Heading, Text, Badge, Flex, Image } from '@aws-amplify/ui-react';
+import { Card, Heading, Text, Badge, Flex, Image, Button } from '@aws-amplify/ui-react';
 
 const client = generateClient({ authMode: "apiKey" });
 
 export default function PostPage() {
   const { postId } = useParams();
+  const navigate = useNavigate();
   const [post, setPost] = useState(null);
   const [author, setAuthor] = useState(null);
 
@@ -48,6 +49,16 @@ export default function PostPage() {
 
   return (
     <Flex direction="column" alignItems="center" padding="2rem">
+      {/* Back Button */}
+      <Flex justifyContent="flex-start" width="100%" maxWidth="800px" marginBottom="1rem">
+        <Button 
+          variation="link" 
+          onClick={() => navigate(-1)}
+        >
+          ← Back
+        </Button>
+      </Flex>
+
       <Card maxWidth="800px" width="100%">
         <Flex justifyContent="space-between" alignItems="center" marginBottom="1rem">
           <Badge size="small">{post.category.toUpperCase()}</Badge>
