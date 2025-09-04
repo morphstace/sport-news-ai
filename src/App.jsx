@@ -20,7 +20,7 @@ import PostList from './PostList';
 import PostBrowser from './PostBrowser';
 import Navbar from './Navbar';
 import AdminPanel from './AdminPanel';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import PostPage from './PostPage.jsx';
 
 Amplify.configure(outputs);
@@ -37,6 +37,7 @@ function AuthenticatedApp({signOut, user}) {
   const [editingPost, setEditingPost] = useState(null);
   const [error, setError] = useState(null);
   const location = useLocation();
+  const navigate = useNavigate();
   
   const initializingRef = useRef(false);
 
@@ -152,9 +153,33 @@ function AuthenticatedApp({signOut, user}) {
   }, []);
 
   const handleNavigate = useCallback((page) => {
-    setCurrentPage(page);
-    setError(null); // Clear errors when navigating
-  }, []);
+    if (page === 'articles') {
+      navigate('/articles');
+    } else if (page === 'home') {
+      navigate('/');
+      setCurrentPage('home');
+    } else {
+      // Per tutte le altre pagine, naviga verso la home e imposta il currentPage
+      navigate('/');
+      setCurrentPage(page);
+      setError(null);
+    }
+  }, [navigate]);
+
+  // Aggiorna currentPage basato sull'URL quando cambia la location
+  useEffect(() => {
+    if (location.pathname === '/articles') {
+      setCurrentPage('articles');
+    } else if (location.pathname.startsWith('/post/')) {
+      // Mantieni il currentPage esistente quando visualizzi un post
+      // In questo modo la navbar mostrerà ancora la pagina da cui provieni
+    } else if (location.pathname === '/') {
+      // Solo se currentPage non è già impostato o è 'articles'
+      if (currentPage === 'articles' || !currentPage) {
+        setCurrentPage('profile');
+      }
+    }
+  }, [location.pathname, currentPage]);
 
   // Loading state
   if (loading) {
@@ -187,7 +212,7 @@ function AuthenticatedApp({signOut, user}) {
         userProfile={currentUserProfile}
         onSignOut={signOut}
         onNavigate={handleNavigate}
-        currentPage={currentPage}
+        currentPage={location.pathname === '/articles' ? 'articles' : currentPage}
         onLoginClick={() => {}}
         onAppNameClick={() => handleNavigate('home')}
       />
@@ -210,6 +235,7 @@ function AuthenticatedApp({signOut, user}) {
             />
           } />
           <Route path="/post/:postId" element={<PostPage />} />
+          <Route path="/articles" element={<PostBrowser onBack={() => handleNavigate('home')} />} />
         </Routes>
       </Flex>
     </Flex>
@@ -383,10 +409,17 @@ function ProfileInfo({ profile, isAdmin }) {
 export default function App() {
   const [showLogin, setShowLogin] = useState(false);
   const location = useLocation();
-  
-  const isPostPage = location.pathname.startsWith('/post/');
+  const navigate = useNavigate();
   
   const handleShowLogin = useCallback(() => setShowLogin(true), []);
+
+  const handleNavigateGuest = useCallback((page) => {
+    if (page === 'articles') {
+      navigate('/articles');
+    } else if (page === 'home') {
+      navigate('/');
+    }
+  }, [navigate]);
 
   if (showLogin) {
     return (
@@ -441,23 +474,19 @@ export default function App() {
 
   return (
     <Flex direction="column" minHeight="100vh">
-      {!isPostPage && (
-        <Navbar 
-          user={null}
-          userRole="guest"
-          onLoginClick={handleShowLogin}
-          onSignOut={() => {}}
-          onNavigate={(page) => {
-            if (page === 'articles') {
-              window.location.href = '#articles';
-            }
-          }}
-          currentPage="home"
-        />
-      )}
+      {/* Navbar sempre visibile per gli utenti non autenticati */}
+      <Navbar 
+        user={null}
+        userRole="guest"
+        onLoginClick={handleShowLogin}
+        onSignOut={() => {}}
+        onNavigate={handleNavigateGuest}
+        currentPage={location.pathname === '/articles' ? 'articles' : 'home'}
+      />
       <Flex flex="1">
         <Routes>
           <Route path="/" element={<HomePage onLoginClick={handleShowLogin} />} />
+          <Route path="/articles" element={<PostBrowser onBack={() => navigate('/')} />} />
           <Route path="/post/:postId" element={<PostPage />} />
         </Routes>
       </Flex>

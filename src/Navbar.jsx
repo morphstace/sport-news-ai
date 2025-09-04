@@ -43,18 +43,16 @@ export default function Navbar({ user, isAdmin, userProfile, onLoginClick, onSig
       boxShadow="0 2px 8px rgba(0,0,0,0.2)"
     >
       <Flex alignItems="center" gap="1rem">
-        <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
-          <div className="navbar-logo">
-            <img src="/logo.png" alt="Logo" style={{ height: '32px', verticalAlign: 'middle' }} />
-            <span
-              className="app-name"
-              style={{ cursor: 'pointer' }}
-              onClick={onAppNameClick}
-            >
-              Sport News AI
-            </span>
-          </div>
-        </Link>
+        <div 
+          className="navbar-logo"
+          style={{ cursor: 'pointer' }}
+          onClick={() => onNavigate('home')}
+        >
+          <img src="/logo.png" alt="Logo" style={{ height: '32px', verticalAlign: 'middle' }} />
+          <span className="app-name">
+            Sport News AI
+          </span>
+        </div>
       </Flex>
 
       {/* Sezione centrale con i link di navigazione */}
