@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { 
   Button,
   Heading,
@@ -35,23 +35,32 @@ function AuthenticatedApp({signOut, user}) {
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editingPost, setEditingPost] = useState(null);
+  const [error, setError] = useState(null);
   const location = useLocation();
   
   const initializingRef = useRef(false);
 
-  useEffect(() => {
-    if (!initializingRef.current) {
-      initializeUserData();
-    }
-  }, [user]);
+  // Funzione per gestire gli errori
+  const handleError = useCallback((error, context) => {
+    console.error(`Error in ${context}:`, error);
+    setError(`Errore in ${context}: ${error.message || error}`);
+    setLoading(false);
+  }, []);
 
-  async function initializeUserData() {
+  // Funzione per inizializzare i dati utente ottimizzata
+  const initializeUserData = useCallback(async () => {
     if (initializingRef.current) return;
     initializingRef.current = true;
 
     try {
-      const attributes = await fetchUserAttributes();
-      const adminStatus = await checkIfUserIsAdmin();
+      setError(null);
+      setLoading(true);
+      
+      const [attributes, adminStatus] = await Promise.all([
+        fetchUserAttributes(),
+        checkIfUserIsAdmin()
+      ]);
+      
       setIsAdmin(adminStatus);
       
       const { data: profiles } = await client.models.UserProfile.list();
@@ -59,88 +68,113 @@ function AuthenticatedApp({signOut, user}) {
       
       await ensureUserProfile(attributes, profiles);
       
-      setLoading(false);
     } catch (error) {
-      console.error('Error initializing user data:', error);
+      handleError(error, 'initialization');
+    } finally {
       setLoading(false);
     }
-  }
+  }, [user, handleError]);
 
-  async function ensureUserProfile(attributes, existingProfiles) {
+  useEffect(() => {
+    if (user && !initializingRef.current) {
+      initializeUserData();
+    }
+  }, [user, initializeUserData]);
+
+  const ensureUserProfile = useCallback(async (attributes, existingProfiles) => {
     if (!attributes?.email && !user?.username) {
-      console.error('No user email found');
-      return;
+      throw new Error('No user email or username found');
     }
 
     const userEmail = attributes?.email || user?.username || '';
     const userId = user?.userId || user?.username || attributes?.sub || '';
     
-    let userProfile = existingProfiles.find(profile => profile.email === userEmail);
+    let userProfile = existingProfiles.find(profile => 
+      profile.email === userEmail || profile.profileOwner === userId
+    );
     
     if (!userProfile) {
-      try {
-        const givenName = attributes?.given_name || '';
-        const familyName = attributes?.family_name || '';
-        const fullName = `${givenName} ${familyName}`.trim();
+      const givenName = attributes?.given_name || '';
+      const familyName = attributes?.family_name || '';
+      const fullName = `${givenName} ${familyName}`.trim();
 
-        const userProfileData = {
-          email: userEmail,
-          name: fullName || 'Utente',
-          firstName: givenName,
-          lastName: familyName,
-          profileOwner: userId
-        };
+      const userProfileData = {
+        email: userEmail,
+        name: fullName || 'Utente',
+        firstName: givenName || null,
+        lastName: familyName || null,
+        profileOwner: userId
+      };
 
-        const response = await client.models.UserProfile.create(userProfileData);
-        userProfile = response.data;
-        setUserProfiles(prev => [...prev, userProfile]);
-      } catch (error) {
-        console.error('Error creating user profile:', error);
-        return;
-      }
+      const response = await client.models.UserProfile.create(userProfileData);
+      userProfile = response.data;
+      setUserProfiles(prev => [...prev, userProfile]);
     }
 
     setCurrentUserProfile(userProfile);
-  }
+  }, [user]);
 
-  async function refreshUserProfiles() {
+  const refreshUserProfiles = useCallback(async () => {
     try {
-      const { data: profiles } = await client.models.UserProfile.list();
-      setUserProfiles(profiles);
+      const [profilesResult, adminStatus] = await Promise.all([
+        client.models.UserProfile.list(),
+        checkIfUserIsAdmin()
+      ]);
+      
+      setUserProfiles(profilesResult.data);
+      setIsAdmin(adminStatus);
       
       if (currentUserProfile) {
-        const updatedProfile = profiles.find(p => p.id === currentUserProfile.id);
+        const updatedProfile = profilesResult.data.find(p => p.id === currentUserProfile.id);
         if (updatedProfile) {
           setCurrentUserProfile(updatedProfile);
         }
       }
-      
-      const adminStatus = await checkIfUserIsAdmin();
-      setIsAdmin(adminStatus);
     } catch (error) {
-      console.error('Error refreshing user profiles:', error);
+      handleError(error, 'refreshing user profiles');
     }
-  }
+  }, [currentUserProfile, handleError]);
 
-  const handleEditPost = (post) => {
+  // Handlers ottimizzati
+  const handleEditPost = useCallback((post) => {
     setEditingPost(post);
     setCurrentPage('create');
-  };
+  }, []);
 
-  const handleCreateNew = () => {
+  const handleCreateNew = useCallback(() => {
     setEditingPost(null);
     setCurrentPage('create');
-  };
+  }, []);
 
-  const handleBackFromEditor = () => {
+  const handleBackFromEditor = useCallback(() => {
     setEditingPost(null);
     setCurrentPage('posts');
-  };
+  }, []);
 
+  const handleNavigate = useCallback((page) => {
+    setCurrentPage(page);
+    setError(null); // Clear errors when navigating
+  }, []);
+
+  // Loading state
   if (loading) {
     return (
       <Flex justifyContent="center" alignItems="center" minHeight="100vh">
         <Heading level={3}>Caricamento profilo...</Heading>
+      </Flex>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <Flex justifyContent="center" alignItems="center" minHeight="100vh" direction="column" gap="1rem">
+        <Alert variation="error">
+          {error}
+        </Alert>
+        <Button onClick={() => window.location.reload()}>
+          Ricarica Pagina
+        </Button>
       </Flex>
     );
   }
@@ -152,117 +186,28 @@ function AuthenticatedApp({signOut, user}) {
         isAdmin={isAdmin}
         userProfile={currentUserProfile}
         onSignOut={signOut}
-        onNavigate={setCurrentPage}
+        onNavigate={handleNavigate}
         currentPage={currentPage}
         onLoginClick={() => {}}
-        onAppNameClick={() => setCurrentPage('home')}
+        onAppNameClick={() => handleNavigate('home')}
       />
 
       <Flex flex="1">
         <Routes>
           <Route path="/" element={
-            currentPage === 'home' ? (
-              <HomePage onLoginClick={() => {}} />
-            ) : currentPage === 'articles' ? (
-              <PostBrowser onBack={() => setCurrentPage('home')} />
-            ) : currentPage === 'create' && isAdmin ? (
-              <PostEditor
-                onBack={handleBackFromEditor}
-                signOut={signOut}
-                editingPost={editingPost}
-              />
-            ) : currentPage === 'posts' && isAdmin ? (
-              <PostList
-                onBack={() => setCurrentPage('profile')}
-                onCreateNew={handleCreateNew}
-                onEditPost={handleEditPost}
-                signOut={signOut}
-              />
-            ) : currentPage === 'admin' && isAdmin ? (
-              <AdminPanel
-                userProfiles={userprofiles}
-                isAdmin={isAdmin}
-                onRefresh={refreshUserProfiles}
-              />
-            ) : (
-              <Flex
-                className='App'
-                justifyContent='center'
-                alignItems="center"
-                direction="column"
-                width="70%"
-                margin="0 auto"
-                padding="2rem"
-              >
-                <Heading level={1}>My Profile</Heading>
-                
-                <Alert 
-                  variation={isAdmin ? 'success' : 'info'}
-                  margin="1rem 0"
-                  hasIcon={true}
-                >
-                  <strong>Ruolo:</strong> {isAdmin ? '🛡️ Amministratore' : '👤 Utente'}
-                </Alert>
-
-                <Divider />
-                
-                {/* Solo gli admin vedono i pulsanti di gestione post */}
-                {isAdmin ? (
-                  <Flex gap="1rem" margin="1rem 0" wrap="wrap" justifyContent="center">
-                    <Button
-                      variation='primary'
-                      onClick={handleCreateNew}
-                    >
-                      Create New Post
-                    </Button>
-                    <Button
-                      variation="outline"
-                      onClick={() => setCurrentPage('posts')}
-                    >
-                      Manage Posts
-                    </Button>
-                    <Button
-                      variation="destructive"
-                      onClick={() => setCurrentPage('admin')}
-                    >
-                      🛠️ Admin Panel
-                    </Button>
-                  </Flex>
-                ) : (
-                  <Alert variation="info" margin="1rem 0">
-                    <strong>Benvenuto!</strong><br />
-                    Come utente puoi leggere tutti i post pubblicati. Solo gli amministratori possono creare e modificare contenuti.
-                  </Alert>
-                )}
-                
-                <Divider />
-                
-                {currentUserProfile ? (
-                  <Flex
-                    direction="column"
-                    justifyContent="center"
-                    alignItems="center"
-                    gap="1rem"
-                    border="1px solid #ccc"
-                    padding="2rem"
-                    borderRadius="8px"
-                    margin="2rem 0"
-                    className="box"
-                    backgroundColor="var(--amplify-colors-background-secondary)"
-                  >
-                    <Heading level="3">{currentUserProfile.name}</Heading>
-                    <View><strong>Email:</strong> {currentUserProfile.email}</View>
-                    <View><strong>Nome:</strong> {currentUserProfile.firstName || 'N/A'}</View>
-                    <View><strong>Cognome:</strong> {currentUserProfile.lastName || 'N/A'}</View>
-                    <View><strong>Ruolo:</strong> {isAdmin ? 'Amministratore' : 'Utente'}</View>
-                  </Flex>
-                ) : (
-                  <Alert variation="warning">
-                    Profilo non trovato. Prova a ricaricare la pagina.
-                  </Alert>
-                )}
-              </Flex>
-            )
+            <PageRenderer 
+              currentPage={currentPage}
+              isAdmin={isAdmin}
+              currentUserProfile={currentUserProfile}
+              userprofiles={userprofiles}
+              editingPost={editingPost}
+              onEditPost={handleEditPost}
+              onCreateNew={handleCreateNew}
+              onBackFromEditor={handleBackFromEditor}
+              onNavigate={handleNavigate}
+              refreshUserProfiles={refreshUserProfiles}
+              signOut={signOut}
+            />
           } />
           <Route path="/post/:postId" element={<PostPage />} />
         </Routes>
@@ -271,13 +216,178 @@ function AuthenticatedApp({signOut, user}) {
   );
 }
 
+// Componente separato per il rendering delle pagine
+function PageRenderer({ 
+  currentPage, 
+  isAdmin, 
+  currentUserProfile, 
+  userprofiles, 
+  editingPost,
+  onEditPost,
+  onCreateNew,
+  onBackFromEditor,
+  onNavigate,
+  refreshUserProfiles,
+  signOut
+}) {
+  switch (currentPage) {
+    case 'home':
+      return <HomePage onLoginClick={() => {}} />;
+    
+    case 'articles':
+      return <PostBrowser onBack={() => onNavigate('home')} />;
+    
+    case 'create':
+      if (!isAdmin) return <AccessDenied onBack={() => onNavigate('profile')} />;
+      return (
+        <PostEditor
+          onBack={onBackFromEditor}
+          signOut={signOut}
+          editingPost={editingPost}
+        />
+      );
+    
+    case 'posts':
+      if (!isAdmin) return <AccessDenied onBack={() => onNavigate('profile')} />;
+      return (
+        <PostList
+          onBack={() => onNavigate('profile')}
+          onCreateNew={onCreateNew}
+          onEditPost={onEditPost}
+          signOut={signOut}
+        />
+      );
+    
+    case 'admin':
+      if (!isAdmin) return <AccessDenied onBack={() => onNavigate('profile')} />;
+      return (
+        <AdminPanel
+          userProfiles={userprofiles}
+          isAdmin={isAdmin}
+          onRefresh={refreshUserProfiles}
+        />
+      );
+    
+    default:
+      return <ProfilePage isAdmin={isAdmin} currentUserProfile={currentUserProfile} onNavigate={onNavigate} />;
+  }
+}
+
+// Componente per l'accesso negato
+function AccessDenied({ onBack }) {
+  return (
+    <Flex justifyContent="center" alignItems="center" minHeight="50vh" direction="column" gap="1rem">
+      <Alert variation="error" hasIcon>
+        <strong>Accesso Negato</strong><br />
+        Non hai i permessi per accedere a questa sezione.
+      </Alert>
+      <Button onClick={onBack}>Torna al Profilo</Button>
+    </Flex>
+  );
+}
+
+// Componente per la pagina profilo
+function ProfilePage({ isAdmin, currentUserProfile, onNavigate }) {
+  return (
+    <Flex
+      className='App'
+      justifyContent='center'
+      alignItems="center"
+      direction="column"
+      width="70%"
+      margin="0 auto"
+      padding="2rem"
+    >
+      <Heading level={1}>My Profile</Heading>
+      
+      <Alert 
+        variation={isAdmin ? 'success' : 'info'}
+        margin="1rem 0"
+        hasIcon={true}
+      >
+        <strong>Ruolo:</strong> {isAdmin ? '🛡️ Amministratore' : '👤 Utente'}
+      </Alert>
+
+      <Divider />
+      
+      {isAdmin ? (
+        <AdminActions onNavigate={onNavigate} />
+      ) : (
+        <UserWelcome />
+      )}
+      
+      <Divider />
+      
+      {currentUserProfile ? (
+        <ProfileInfo profile={currentUserProfile} isAdmin={isAdmin} />
+      ) : (
+        <Alert variation="warning">
+          Profilo non trovato. Prova a ricaricare la pagina.
+        </Alert>
+      )}
+    </Flex>
+  );
+}
+
+// Componente per le azioni admin
+function AdminActions({ onNavigate }) {
+  return (
+    <Flex gap="1rem" margin="1rem 0" wrap="wrap" justifyContent="center">
+      <Button variation='primary' onClick={() => onNavigate('create')}>
+        Create New Post
+      </Button>
+      <Button variation="outline" onClick={() => onNavigate('posts')}>
+        Manage Posts
+      </Button>
+      <Button variation="destructive" onClick={() => onNavigate('admin')}>
+        🛠️ Admin Panel
+      </Button>
+    </Flex>
+  );
+}
+
+// Componente per il messaggio di benvenuto utente
+function UserWelcome() {
+  return (
+    <Alert variation="info" margin="1rem 0">
+      <strong>Benvenuto!</strong><br />
+      Come utente puoi leggere tutti i post pubblicati. Solo gli amministratori possono creare e modificare contenuti.
+    </Alert>
+  );
+}
+
+// Componente per le informazioni del profilo
+function ProfileInfo({ profile, isAdmin }) {
+  return (
+    <Flex
+      direction="column"
+      justifyContent="center"
+      alignItems="center"
+      gap="1rem"
+      border="1px solid #ccc"
+      padding="2rem"
+      borderRadius="8px"
+      margin="2rem 0"
+      className="box"
+      backgroundColor="var(--amplify-colors-background-secondary)"
+    >
+      <Heading level="3">{profile.name}</Heading>
+      <View><strong>Email:</strong> {profile.email}</View>
+      <View><strong>Nome:</strong> {profile.firstName || 'N/A'}</View>
+      <View><strong>Cognome:</strong> {profile.lastName || 'N/A'}</View>
+      <View><strong>Ruolo:</strong> {isAdmin ? 'Amministratore' : 'Utente'}</View>
+    </Flex>
+  );
+}
+
 export default function App() {
   const [showLogin, setShowLogin] = useState(false);
   const location = useLocation();
   
-  // Determina se siamo su una pagina di post
   const isPostPage = location.pathname.startsWith('/post/');
   
+  const handleShowLogin = useCallback(() => setShowLogin(true), []);
+
   if (showLogin) {
     return (
       <Authenticator
@@ -335,11 +445,10 @@ export default function App() {
         <Navbar 
           user={null}
           userRole="guest"
-          onLoginClick={() => setShowLogin(true)}
+          onLoginClick={handleShowLogin}
           onSignOut={() => {}}
           onNavigate={(page) => {
             if (page === 'articles') {
-              // Per gli utenti non autenticati, mostra solo la sezione articoli
               window.location.href = '#articles';
             }
           }}
@@ -348,7 +457,7 @@ export default function App() {
       )}
       <Flex flex="1">
         <Routes>
-          <Route path="/" element={<HomePage onLoginClick={() => setShowLogin(true)} />} />
+          <Route path="/" element={<HomePage onLoginClick={handleShowLogin} />} />
           <Route path="/post/:postId" element={<PostPage />} />
         </Routes>
       </Flex>
