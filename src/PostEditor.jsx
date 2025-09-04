@@ -3,8 +3,9 @@ import { generateClient } from 'aws-amplify/data';
 import { uploadData, getUrl } from 'aws-amplify/storage';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { checkIfUserIsAdmin } from './utils/authUtils';
+import { correctText, improveText, generateTags } from './utils/geminiConfig';
 import CrawlerPanel from './CrawlerPanel';
-import S3Image from './components/S3Image'; // Aggiungi questa importazione
+import S3Image from './components/S3Image';
 import { 
   Button,
   Heading,
@@ -12,7 +13,10 @@ import {
   TextAreaField,
   Flex,
   View,
-  Alert
+  Alert,
+  Text,
+  Card,
+  Divider
 } from '@aws-amplify/ui-react';
 
 const client = generateClient({
@@ -31,6 +35,24 @@ function PostEditor({ onBack, editingPost }) {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingPermissions, setCheckingPermissions] = useState(true);
+
+  // Aggiungi stato per l'AI
+  const [aiLoading, setAiLoading] = useState({
+    correctTitle: false,
+    correctContent: false,
+    improveTitle: false,
+    improveContent: false,
+    generateTags: false
+  });
+  
+  // Modifica lo stato per gestire il confronto AI senza Modal
+  const [showAiComparison, setShowAiComparison] = useState(false);
+  const [aiComparison, setAiComparison] = useState({
+    original: '',
+    improved: '',
+    type: '',
+    field: ''
+  });
 
   useEffect(() => {
     checkAdminPermissions();
@@ -235,6 +257,77 @@ function PostEditor({ onBack, editingPost }) {
     }
   };
 
+  // Funzioni AI integrate
+  const handleAiAction = async (action, field) => {
+    const fieldValue = formData[field];
+    if (!fieldValue?.trim()) {
+      alert(`Inserisci ${field === 'title' ? 'un titolo' : 'del contenuto'} prima di usare l'AI`);
+      return;
+    }
+
+    const loadingKey = `${action}${field.charAt(0).toUpperCase() + field.slice(1)}`;
+    setAiLoading(prev => ({ ...prev, [loadingKey]: true }));
+
+    try {
+      let result;
+      if (action === 'correct') {
+        result = await correctText(fieldValue);
+      } else if (action === 'improve') {
+        result = await improveText(fieldValue, field === 'title' ? 'title' : 'article');
+      }
+
+      if (result && result !== fieldValue) {
+        setAiComparison({
+          original: fieldValue,
+          improved: result,
+          type: action === 'correct' ? 'Correzione' : 'Miglioramento',
+          field: field
+        });
+        setShowAiComparison(true);
+      } else {
+        alert(`Il ${field === 'title' ? 'titolo' : 'contenuto'} non necessita ${action === 'correct' ? 'correzioni' : 'miglioramenti'}`);
+      }
+    } catch (error) {
+      console.error(`Errore ${action}:`, error);
+      alert(`Errore nell'${action === 'correct' ? 'correzione' : 'miglioramento'}: ${error.message}`);
+    } finally {
+      setAiLoading(prev => ({ ...prev, [loadingKey]: false }));
+    }
+  };
+
+  const handleGenerateAiTags = async () => {
+    if (!formData.title?.trim() && !formData.content?.trim()) {
+      alert('Inserisci titolo o contenuto prima di generare i tag');
+      return;
+    }
+
+    setAiLoading(prev => ({ ...prev, generateTags: true }));
+    try {
+      const aiTags = await generateTags(formData.title || '', formData.content || '');
+      const newTags = formData.tags ? `${formData.tags}, ${aiTags}` : aiTags;
+      setFormData(prev => ({ ...prev, tags: newTags }));
+    } catch (error) {
+      console.error('Errore generazione tag:', error);
+      alert(`Errore nella generazione tag: ${error.message}`);
+    } finally {
+      setAiLoading(prev => ({ ...prev, generateTags: false }));
+    }
+  };
+
+  const acceptAiChange = () => {
+    setFormData(prev => ({
+      ...prev,
+      [aiComparison.field]: aiComparison.improved
+    }));
+    setShowAiComparison(false);
+    setAiComparison({ original: '', improved: '', type: '', field: '' });
+  };
+
+  const rejectAiChange = () => {
+    setShowAiComparison(false);
+    setAiComparison({ original: '', improved: '', type: '', field: '' });
+  };
+
   if (checkingPermissions) {
     return (
       <Flex justifyContent="center" alignItems="center" minHeight="50vh">
@@ -287,6 +380,60 @@ function PostEditor({ onBack, editingPost }) {
         </Flex>
       </Flex>
 
+      {/* AI Comparison Section - Sostituisce il Modal */}
+      {showAiComparison && (
+        <Card padding="1.5rem" marginBottom="1rem" border="2px solid #007bff" backgroundColor="#f8f9ff">
+          <Heading level={4} marginBottom="1rem">
+            {aiComparison.type} {aiComparison.field === 'title' ? 'Titolo' : 'Contenuto'}
+          </Heading>
+          
+          <Flex direction="column" gap="1rem">
+            <View>
+              <Text fontWeight="bold" marginBottom="0.5rem" color="#666">
+                📝 Testo Originale:
+              </Text>
+              <Card
+                padding="1rem"
+                backgroundColor="#fff"
+                border="1px solid #ddd"
+                maxHeight="200px"
+                overflow="auto"
+              >
+                <Text fontSize="0.9rem" lineHeight="1.5">
+                  {aiComparison.original}
+                </Text>
+              </Card>
+            </View>
+            
+            <View>
+              <Text fontWeight="bold" marginBottom="0.5rem" color="green">
+                ✨ Testo {aiComparison.type === 'Correzione' ? 'Corretto' : 'Migliorato'}:
+              </Text>
+              <Card
+                padding="1rem"
+                backgroundColor="#f8fff8"
+                border="2px solid #28a745"
+                maxHeight="200px"
+                overflow="auto"
+              >
+                <Text fontSize="0.9rem" lineHeight="1.5">
+                  {aiComparison.improved}
+                </Text>
+              </Card>
+            </View>
+          </Flex>
+
+          <Flex justifyContent="flex-end" gap="1rem" marginTop="1rem">
+            <Button variation="outline" onClick={rejectAiChange}>
+              ❌ Rifiuta
+            </Button>
+            <Button variation="primary" onClick={acceptAiChange}>
+              ✅ Accetta Modifica
+            </Button>
+          </Flex>
+        </Card>
+      )}
+
       {showCrawler && (
         <View marginBottom="2rem">
           <CrawlerPanel 
@@ -295,6 +442,64 @@ function PostEditor({ onBack, editingPost }) {
           />
         </View>
       )}
+
+      {/* AI Tools Panel */}
+      <View 
+        padding="1rem" 
+        border="1px solid #e0e0e0" 
+        borderRadius="8px" 
+        backgroundColor="#f8f9fa"
+        marginBottom="1rem"
+      >
+        <Heading level={5} marginBottom="0.5rem">🤖 Assistente AI</Heading>
+        <Flex gap="0.5rem" wrap="wrap" alignItems="center">
+          <Button
+            size="small"
+            variation="outline"
+            onClick={() => handleAiAction('correct', 'title')}
+            isLoading={aiLoading.correctTitle}
+            isDisabled={!formData.title?.trim() || Object.values(aiLoading).some(l => l)}
+          >
+            ✏️ Correggi Titolo
+          </Button>
+          <Button
+            size="small"
+            variation="outline"
+            onClick={() => handleAiAction('correct', 'content')}
+            isLoading={aiLoading.correctContent}
+            isDisabled={!formData.content?.trim() || Object.values(aiLoading).some(l => l)}
+          >
+            ✏️ Correggi Contenuto
+          </Button>
+          <Button
+            size="small"
+            variation="primary"
+            onClick={() => handleAiAction('improve', 'title')}
+            isLoading={aiLoading.improveTitle}
+            isDisabled={!formData.title?.trim() || Object.values(aiLoading).some(l => l)}
+          >
+            ✨ Migliora Titolo
+          </Button>
+          <Button
+            size="small"
+            variation="primary"
+            onClick={() => handleAiAction('improve', 'content')}
+            isLoading={aiLoading.improveContent}
+            isDisabled={!formData.content?.trim() || Object.values(aiLoading).some(l => l)}
+          >
+            ✨ Migliora Contenuto
+          </Button>
+          <Button
+            size="small"
+            variation="link"
+            onClick={handleGenerateAiTags}
+            isLoading={aiLoading.generateTags}
+            isDisabled={(!formData.title?.trim() && !formData.content?.trim()) || Object.values(aiLoading).some(l => l)}
+          >
+            🏷️ Genera Tag AI
+          </Button>
+        </Flex>
+      </View>
 
       <form onSubmit={handleSubmit}>
         <Flex direction="column" gap="1.5rem">

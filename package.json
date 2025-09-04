@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@aws-amplify/ui-react": "^6.11.2",
+    "@google/genai": "^1.17.0",
     "aws-amplify": "^6.15.5",
     "axios": "^1.11.0",
     "axis": "^1.0.0",
