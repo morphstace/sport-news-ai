@@ -101,3 +101,28 @@ Restituisci solo i tag separati da virgole, senza spiegazioni aggiuntive.
     throw error;
   }
 };
+
+export const summarizeText = async (text) => {
+  try {
+    const prompt = `
+Riassumi questo testo sportivo in italiano mantenendo i punti chiave.
+Il riassunto deve essere conciso, chiaro e coinvolgente.
+Massimo 1000 caratteri, minimo 500 caratteri.
+
+Testo da riassumere:
+${text}
+
+Restituisci solo il riassunto senza spiegazioni aggiuntive.
+`;
+
+    const response = await genAI.models.generateContent({
+      model: "gemini-2.5-flash-lite",
+      contents: prompt
+    });
+    
+    return response.text.trim();
+  } catch (error) {
+    console.error('Errore nel riassunto del testo:', error);
+    throw error;
+  }
+};

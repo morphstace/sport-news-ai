@@ -3,20 +3,18 @@ import { generateClient } from 'aws-amplify/data';
 import { uploadData, getUrl } from 'aws-amplify/storage';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { checkIfUserIsAdmin } from './utils/authUtils';
-import { correctText, improveText, generateTags } from './utils/geminiConfig';
+import { correctText, improveText, generateTags, summarizeText } from './utils/geminiConfig';
 import CrawlerPanel from './CrawlerPanel';
 import S3Image from './components/S3Image';
 import { 
   Button,
   Heading,
   TextField,
-  TextAreaField,
   Flex,
   View,
   Alert,
   Text,
   Card,
-  Divider
 } from '@aws-amplify/ui-react';
 
 const client = generateClient({
@@ -42,7 +40,8 @@ function PostEditor({ onBack, editingPost }) {
     correctContent: false,
     improveTitle: false,
     improveContent: false,
-    generateTags: false
+    generateTags: false,
+    summarizeContent: false
   });
   
   // Modifica lo stato per gestire il confronto AI senza Modal
@@ -274,7 +273,11 @@ function PostEditor({ onBack, editingPost }) {
         result = await correctText(fieldValue);
       } else if (action === 'improve') {
         result = await improveText(fieldValue, field === 'title' ? 'title' : 'article');
+      } else if (action === 'summarize' && field === 'content') {
+        // Implementa la funzione di sintesi se necessario
+        result = await summarizeText(fieldValue);
       }
+      
 
       if (result && result !== fieldValue) {
         setAiComparison({
@@ -470,6 +473,15 @@ function PostEditor({ onBack, editingPost }) {
             isDisabled={!formData.content?.trim() || Object.values(aiLoading).some(l => l)}
           >
             ✏️ Correggi Contenuto
+          </Button>
+          <Button
+            size="small"
+            variation="primary"
+            onClick={() => handleAiAction('summarize', 'content')}
+            isLoading={aiLoading.summarizeContent}
+            isDisabled={!formData.content?.trim() || Object.values(aiLoading).some(l => l)}
+          >
+            📝 Riassumi Contenuto
           </Button>
           <Button
             size="small"
