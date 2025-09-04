@@ -78,19 +78,6 @@ export default function HomePage({ onLoginClick }) {
         marginBottom="2rem"
       >
         <Heading level={1} marginBottom="1rem">Welcome to Sport News AI</Heading>
-        <Text fontSize="large" maxWidth="600px" marginBottom="2rem">
-          Discover the latest sports news powered by AI. 
-          Get personalized updates and insights from your favorite sports.
-        </Text>
-        
-        <Flex gap="1rem">
-          <Button variation="primary" onClick={onLoginClick}>
-            Sign In
-          </Button>
-          <Button variation="link">
-            Learn More
-          </Button>
-        </Flex>
       </Flex>
 
       <Divider />

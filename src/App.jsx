@@ -17,6 +17,7 @@ import outputs from "../amplify_outputs.json";
 import HomePage from './HomePage';
 import PostEditor from './PostEditor';
 import PostList from './PostList';
+import PostBrowser from './PostBrowser';
 import Navbar from './Navbar';
 import AdminPanel from './AdminPanel';
 import { Routes, Route, useLocation } from 'react-router-dom';
@@ -162,13 +163,15 @@ function AuthenticatedApp({signOut, user}) {
           <Route path="/" element={
             currentPage === 'home' ? (
               <HomePage onLoginClick={() => {}} />
-            ) : currentPage === 'create' ? (
+            ) : currentPage === 'articles' ? (
+              <PostBrowser onBack={() => setCurrentPage('home')} />
+            ) : currentPage === 'create' && isAdmin ? (
               <PostEditor
                 onBack={handleBackFromEditor}
                 signOut={signOut}
                 editingPost={editingPost}
               />
-            ) : currentPage === 'posts' ? (
+            ) : currentPage === 'posts' && isAdmin ? (
               <PostList
                 onBack={() => setCurrentPage('profile')}
                 onCreateNew={handleCreateNew}
@@ -203,28 +206,34 @@ function AuthenticatedApp({signOut, user}) {
 
                 <Divider />
                 
-                <Flex gap="1rem" margin="1rem 0" wrap="wrap" justifyContent="center">
-                  <Button
-                    variation='primary'
-                    onClick={handleCreateNew}
-                  >
-                    Create New Post
-                  </Button>
-                  <Button
-                    variation="outline"
-                    onClick={() => setCurrentPage('posts')}
-                  >
-                    Manage Posts
-                  </Button>
-                  {isAdmin && (
+                {/* Solo gli admin vedono i pulsanti di gestione post */}
+                {isAdmin ? (
+                  <Flex gap="1rem" margin="1rem 0" wrap="wrap" justifyContent="center">
+                    <Button
+                      variation='primary'
+                      onClick={handleCreateNew}
+                    >
+                      Create New Post
+                    </Button>
+                    <Button
+                      variation="outline"
+                      onClick={() => setCurrentPage('posts')}
+                    >
+                      Manage Posts
+                    </Button>
                     <Button
                       variation="destructive"
                       onClick={() => setCurrentPage('admin')}
                     >
                       🛠️ Admin Panel
                     </Button>
-                  )}
-                </Flex>
+                  </Flex>
+                ) : (
+                  <Alert variation="info" margin="1rem 0">
+                    <strong>Benvenuto!</strong><br />
+                    Come utente puoi leggere tutti i post pubblicati. Solo gli amministratori possono creare e modificare contenuti.
+                  </Alert>
+                )}
                 
                 <Divider />
                 
@@ -328,7 +337,12 @@ export default function App() {
           userRole="guest"
           onLoginClick={() => setShowLogin(true)}
           onSignOut={() => {}}
-          onNavigate={() => {}}
+          onNavigate={(page) => {
+            if (page === 'articles') {
+              // Per gli utenti non autenticati, mostra solo la sezione articoli
+              window.location.href = '#articles';
+            }
+          }}
           currentPage="home"
         />
       )}

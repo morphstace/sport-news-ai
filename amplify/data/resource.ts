@@ -25,9 +25,8 @@ const schema = a.schema({
       imageUrl: a.string(),
     })
     .authorization((allow) => [
-      allow.authenticated().to(['create', 'read']), // Tutti gli utenti autenticati possono creare e leggere
-      allow.ownerDefinedIn("authorId").to(['read', 'update', 'delete']), // Il proprietario può fare tutto
-      allow.group('admins').to(['create', 'read', 'update', 'delete']), // Gli admin possono fare tutto
+      allow.authenticated().to(['read']), // Utenti autenticati possono solo leggere
+      allow.group('admins').to(['create', 'read', 'update', 'delete']), // Solo gli admin possono fare tutto
       allow.publicApiKey().to(['read']) // Lettura pubblica
     ]),
 });
@@ -37,7 +36,7 @@ export type Schema = ClientSchema<typeof schema>;
 export const data = defineData({
   schema,
   authorizationModes: {
-    defaultAuthorizationMode: "userPool", // Cambiato da apiKey a userPool per le operazioni autenticate
+    defaultAuthorizationMode: "userPool",
     apiKeyAuthorizationMode: {
       expiresInDays: 30,
     },

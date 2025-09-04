@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { useNavigate } from 'react-router-dom';
+import { checkIfUserIsAdmin } from './utils/authUtils';
 import {
     View,
     Text,
@@ -42,6 +43,16 @@ export default function PostList({ onBack, onCreateNew, onEditPost, signOut }) {
         };
 
         initialize();
+    }, []);
+
+    useEffect(() => {
+        const checkAdmin = async () => {
+            const adminStatus = await checkIfUserIsAdmin();
+            if (!adminStatus) {
+                onBack(); // Torna indietro se non è admin
+            }
+        };
+        checkAdmin();
     }, []);
 
     const fetchPosts = async () => {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import { uploadData, getUrl } from 'aws-amplify/storage';
 import { getCurrentUser } from 'aws-amplify/auth';
+import { checkIfUserIsAdmin } from './utils/authUtils';
 import CrawlerPanel from './CrawlerPanel';
 import { 
   Button,
@@ -27,6 +28,31 @@ function PostEditor({ onBack, editingPost }) {
   const [loading, setLoading] = useState(false);
   const [showCrawler, setShowCrawler] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingPermissions, setCheckingPermissions] = useState(true);
+
+  useEffect(() => {
+    checkAdminPermissions();
+  }, []);
+
+  const checkAdminPermissions = async () => {
+    try {
+      const adminStatus = await checkIfUserIsAdmin();
+      setIsAdmin(adminStatus);
+      
+      if (!adminStatus) {
+        // Se non è admin, torna indietro
+        setTimeout(() => {
+          onBack();
+        }, 3000);
+      }
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+      onBack();
+    } finally {
+      setCheckingPermissions(false);
+    }
+  };
 
   useEffect(() => {
     if (editingPost) {
@@ -212,6 +238,34 @@ function PostEditor({ onBack, editingPost }) {
       }));
     }
   };
+
+  if (checkingPermissions) {
+    return (
+      <Flex justifyContent="center" alignItems="center" minHeight="50vh">
+        <Heading level={3}>Verifica permessi...</Heading>
+      </Flex>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <Flex 
+        direction="column" 
+        justifyContent="center" 
+        alignItems="center" 
+        minHeight="50vh"
+        padding="2rem"
+      >
+        <Alert variation="error" hasIcon={true} marginBottom="2rem">
+          <strong>Accesso Negato</strong><br />
+          Solo gli amministratori possono creare o modificare i post.
+        </Alert>
+        <Button variation="primary" onClick={onBack}>
+          Torna Indietro
+        </Button>
+      </Flex>
+    );
+  }
 
   return (
     <Flex direction="column" padding="2rem" maxWidth="800px" margin="0 auto">

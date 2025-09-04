@@ -57,44 +57,62 @@ export default function Navbar({ user, isAdmin, userProfile, onLoginClick, onSig
         </Link>
       </Flex>
 
-      {user && (
-        <Flex gap="1rem" alignItems="center">
-          <Button
-            variation="link"
-            onClick={() => onNavigate('profile')}
-            color={currentPage === 'profile' ? '#ffc107' : '#fff'}
-            fontWeight={currentPage === 'profile' ? '600' : '400'}
-          >
-            Profile
-          </Button>
-          <Button
-            variation="link"
-            onClick={() => onNavigate('posts')}
-            color={currentPage === 'posts' ? '#ffc107' : '#fff'}
-            fontWeight={currentPage === 'posts' ? '600' : '400'}
-          >
-            My Posts
-          </Button>
-          <Button
-            variation="link"
-            onClick={() => onNavigate('create')}
-            color={currentPage === 'create' ? '#ffc107' : '#fff'}
-            fontWeight={currentPage === 'create' ? '600' : '400'}
-          >
-            Create Post
-          </Button>
-          {isAdmin && (
+      {/* Sezione centrale con i link di navigazione */}
+      <Flex gap="1rem" alignItems="center">
+        {/* Link Articoli - visibile sempre */}
+        <Button
+          variation="link"
+          onClick={() => onNavigate('articles')}
+          color={currentPage === 'articles' ? '#ffc107' : '#fff'}
+          fontWeight={currentPage === 'articles' ? '600' : '400'}
+        >
+          📰 Articoli
+        </Button>
+
+        {/* Link per utenti autenticati */}
+        {user && (
+          <>
             <Button
               variation="link"
-              onClick={() => onNavigate('admin')}
-              color={currentPage === 'admin' ? '#ffc107' : '#dc3545'}
-              fontWeight={currentPage === 'admin' ? '600' : '400'}
+              onClick={() => onNavigate('profile')}
+              color={currentPage === 'profile' ? '#ffc107' : '#fff'}
+              fontWeight={currentPage === 'profile' ? '600' : '400'}
             >
-              🛠️ Admin
+              Profile
             </Button>
-          )}
-        </Flex>
-      )}
+            
+            {/* Solo gli admin possono vedere le opzioni di gestione post */}
+            {isAdmin && (
+              <>
+                <Button
+                  variation="link"
+                  onClick={() => onNavigate('posts')}
+                  color={currentPage === 'posts' ? '#ffc107' : '#fff'}
+                  fontWeight={currentPage === 'posts' ? '600' : '400'}
+                >
+                  My Posts
+                </Button>
+                <Button
+                  variation="link"
+                  onClick={() => onNavigate('create')}
+                  color={currentPage === 'create' ? '#ffc107' : '#fff'}
+                  fontWeight={currentPage === 'create' ? '600' : '400'}
+                >
+                  Create Post
+                </Button>
+                <Button
+                  variation="link"
+                  onClick={() => onNavigate('admin')}
+                  color={currentPage === 'admin' ? '#ffc107' : '#dc3545'}
+                  fontWeight={currentPage === 'admin' ? '600' : '400'}
+                >
+                  🛠️ Admin
+                </Button>
+              </>
+            )}
+          </>
+        )}
+      </Flex>
 
       <Flex alignItems="center" gap="1rem">
         {user ? (
