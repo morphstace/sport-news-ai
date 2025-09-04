@@ -3,6 +3,7 @@ import { generateClient } from 'aws-amplify/data';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { useNavigate } from 'react-router-dom';
 import { checkIfUserIsAdmin } from './utils/authUtils';
+import S3Image from './components/S3Image'; // Aggiungi questa importazione
 import {
     View,
     Text,
@@ -12,7 +13,6 @@ import {
     Heading,
     Divider,
     Badge,
-    Image,
     Alert
 } from '@aws-amplify/ui-react';
 
@@ -192,12 +192,15 @@ export default function PostList({ onBack, onCreateNew, onEditPost, signOut }) {
 
                             {/* Immagine */}
                             {post.imageUrl && (
-                                <Image
-                                    src={post.imageUrl}
+                                <S3Image
+                                    imageKey={post.imageUrl}
                                     alt={post.title}
-                                    maxHeight="200px"
-                                    objectFit="cover"
-                                    borderRadius="8px"
+                                    style={{
+                                        maxHeight: '200px',
+                                        width: '100%',
+                                        objectFit: 'cover',
+                                        borderRadius: '8px'
+                                    }}
                                 />
                             )}
 

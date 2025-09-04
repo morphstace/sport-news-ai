@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import { useNavigate } from 'react-router-dom';
+import S3Image from './components/S3Image'; // Aggiungi questa importazione
 import {
   View,
   Text,
@@ -10,7 +11,6 @@ import {
   Heading,
   SearchField,
   Badge,
-  Image,
   Alert,
   SelectField
 } from '@aws-amplify/ui-react';
@@ -208,13 +208,15 @@ export default function PostBrowser({ onBack }) {
                 {/* Immagine del post */}
                 {post.imageUrl && (
                   <View minWidth="200px" maxWidth="200px">
-                    <Image
-                      src={post.imageUrl}
+                    <S3Image
+                      imageKey={post.imageUrl}
                       alt={post.title}
-                      width="100%"
-                      height="120px"
-                      objectFit="cover"
-                      borderRadius="8px"
+                      style={{
+                        width: '100%',
+                        height: '120px',
+                        objectFit: 'cover',
+                        borderRadius: '8px'
+                      }}
                     />
                   </View>
                 )}

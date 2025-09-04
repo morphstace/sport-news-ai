@@ -1,7 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { generateClient } from 'aws-amplify/data';
-import { Card, Heading, Text, Badge, Flex, Image, Button } from '@aws-amplify/ui-react';
+import { Card, Heading, Text, Badge, Flex, Button } from '@aws-amplify/ui-react';
+import S3Image from './components/S3Image'; // Aggiungi questa importazione
 
 const client = generateClient({ authMode: "apiKey" });
 
@@ -149,14 +150,16 @@ export default function PostPage() {
 
         {/* Immagine del post */}
         {post.imageUrl && (
-          <Image
-            src={post.imageUrl}
+          <S3Image
+            imageKey={post.imageUrl}
             alt={post.title}
-            width="100%"
-            maxHeight="400px"
-            objectFit="cover"
-            borderRadius="8px"
-            marginBottom="2rem"
+            style={{
+              width: '100%',
+              maxHeight: '400px',
+              objectFit: 'cover',
+              borderRadius: '8px',
+              marginBottom: '2rem'
+            }}
           />
         )}
         

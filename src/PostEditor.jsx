@@ -4,6 +4,7 @@ import { uploadData, getUrl } from 'aws-amplify/storage';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { checkIfUserIsAdmin } from './utils/authUtils';
 import CrawlerPanel from './CrawlerPanel';
+import S3Image from './components/S3Image'; // Aggiungi questa importazione
 import { 
   Button,
   Heading,
@@ -183,7 +184,8 @@ function PostEditor({ onBack, editingPost }) {
 
     try {
       const fileExtension = file.name.split('.').pop();
-      const fileName = `posts/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExtension}`;
+      // Usa public/posts/ per la cartella
+      const fileName = `public/posts/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExtension}`;
 
       const result = await uploadData({
         key: fileName,
@@ -194,16 +196,10 @@ function PostEditor({ onBack, editingPost }) {
         }
       }).result;
 
-      const urlResult = await getUrl({
-        key: result.key,
-        options: {
-          accessLevel: 'guest'
-        }
-      });
-
+      // Salva solo la chiave S3
       setFormData(prev => ({
         ...prev,
-        imageUrl: urlResult.url.toString()
+        imageUrl: result.key
       }));
 
     } catch (error) {
@@ -412,8 +408,8 @@ function PostEditor({ onBack, editingPost }) {
                 padding="1rem"
                 textAlign="center"
               >
-                <img 
-                  src={formData.imageUrl} 
+                <S3Image 
+                  imageKey={formData.imageUrl}
                   alt="Preview" 
                   style={{ 
                     maxWidth: '100%',

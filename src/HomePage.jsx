@@ -2,6 +2,7 @@ import { Button, Heading, Flex, Text, Divider, Card, Badge } from '@aws-amplify/
 import { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import { useNavigate } from 'react-router-dom';
+import S3Image from './components/S3Image'; // Importa il nuovo componente
 
 const client = generateClient({ authMode: "apiKey" });
 
@@ -124,8 +125,8 @@ export default function HomePage({ onLoginClick }) {
 
                     {/* Post Image (se presente) */}
                     {post.imageUrl && (
-                      <img 
-                        src={post.imageUrl} 
+                      <S3Image 
+                        imageKey={post.imageUrl}
                         alt={post.title}
                         style={{
                           width: '100%',
