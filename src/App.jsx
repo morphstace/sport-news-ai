@@ -216,7 +216,7 @@ function AuthenticatedApp({signOut, user}) {
           user={user}
           isAdmin={isAdmin}
           userProfile={currentUserProfile}
-          onSignOut={signOut}
+          onSignOut={signOut} // Ora utilizza la funzione modificata
           onNavigate={handleNavigate}
           currentPage={location.pathname === '/articles' ? 'articles' : currentPage}
           onLoginClick={() => {}}
@@ -237,7 +237,7 @@ function AuthenticatedApp({signOut, user}) {
                 onBackFromEditor={handleBackFromEditor}
                 onNavigate={handleNavigate}
                 refreshUserProfiles={refreshUserProfiles}
-                signOut={signOut}
+                signOut={signOut} // Passa la funzione modificata anche qui
               />
             } />
             <Route path="/post/:postId" element={<PostPage />} />
@@ -334,6 +334,13 @@ export default function App() {
     }
   }, [navigate]);
 
+  // Nuova funzione per gestire il logout
+  const handleSignOut = useCallback((signOutFunction) => {
+    signOutFunction();
+    setShowLogin(false); // Torna alla vista guest invece che al login
+    navigate('/'); // Naviga alla home
+  }, [navigate]);
+
   if (showLogin) {
     return (
       <div style={{ position: 'relative', minHeight: '100vh' }}>
@@ -383,7 +390,14 @@ export default function App() {
           }}
         >
           {({ signOut, user }) => (
-            user ? <AuthenticatedApp signOut={signOut} user={user} /> : <div>Loading...</div>
+            user ? (
+              <AuthenticatedApp 
+                signOut={() => handleSignOut(signOut)} 
+                user={user} 
+              />
+            ) : (
+              <div>Loading...</div>
+            )
           )}
         </Authenticator>
       </div>
