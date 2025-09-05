@@ -22,6 +22,8 @@ import PostBrowser from './PostBrowser';
 import Navbar from './Navbar';
 import AdminPanel from './AdminPanel';
 import ProfilePage from './Profile'; // Import del nuovo componente
+import Header from './Header'; // Import del nuovo Header
+import Footer from './Footer'; // Import del nuovo Footer
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import PostPage from './PostPage.jsx';
 
@@ -212,11 +214,14 @@ function AuthenticatedApp({signOut, user}) {
       <div className="app-background"></div>
       
       <Flex direction="column" minHeight="100vh">
+        {/* Header con immagine titolo */}
+        <Header onClick={() => handleNavigate('home')} />
+        
         <Navbar 
           user={user}
           isAdmin={isAdmin}
           userProfile={currentUserProfile}
-          onSignOut={signOut} // Ora utilizza la funzione modificata
+          onSignOut={signOut}
           onNavigate={handleNavigate}
           currentPage={location.pathname === '/articles' ? 'articles' : currentPage}
           onLoginClick={() => {}}
@@ -237,13 +242,16 @@ function AuthenticatedApp({signOut, user}) {
                 onBackFromEditor={handleBackFromEditor}
                 onNavigate={handleNavigate}
                 refreshUserProfiles={refreshUserProfiles}
-                signOut={signOut} // Passa la funzione modificata anche qui
+                signOut={signOut}
               />
             } />
             <Route path="/post/:postId" element={<PostPage />} />
             <Route path="/articles" element={<PostBrowser onBack={() => handleNavigate('home')} />} />
           </Routes>
         </Flex>
+
+        {/* Footer */}
+        <Footer />
       </Flex>
     </div>
   );
@@ -334,17 +342,15 @@ export default function App() {
     }
   }, [navigate]);
 
-  // Nuova funzione per gestire il logout
   const handleSignOut = useCallback((signOutFunction) => {
     signOutFunction();
-    setShowLogin(false); // Torna alla vista guest invece che al login
-    navigate('/'); // Naviga alla home
+    setShowLogin(false);
+    navigate('/');
   }, [navigate]);
 
   if (showLogin) {
     return (
       <div style={{ position: 'relative', minHeight: '100vh' }}>
-        {/* Background pattern */}
         <div className="app-background"></div>
         
         <Authenticator
@@ -396,7 +402,10 @@ export default function App() {
                 user={user} 
               />
             ) : (
-              <div>Loading...</div>
+              <Flex direction="column" minHeight="100vh">
+                <div>Loading...</div>
+                <Footer />
+              </Flex>
             )
           )}
         </Authenticator>
@@ -406,11 +415,12 @@ export default function App() {
 
   return (
     <div style={{ position: 'relative', minHeight: '100vh' }}>
-      {/* Background pattern */}
       <div className="app-background"></div>
       
       <Flex direction="column" minHeight="100vh">
-        {/* Navbar sempre visibile per gli utenti non autenticati */}
+        {/* Header con immagine titolo anche per i guest */}
+        <Header onClick={() => navigate('/')} />
+        
         <Navbar 
           user={null}
           userRole="guest"
@@ -419,6 +429,7 @@ export default function App() {
           onNavigate={handleNavigateGuest}
           currentPage={location.pathname === '/articles' ? 'articles' : 'home'}
         />
+        
         <Flex flex="1">
           <Routes>
             <Route path="/" element={<HomePage onLoginClick={handleShowLogin} />} />
@@ -426,6 +437,9 @@ export default function App() {
             <Route path="/post/:postId" element={<PostPage />} />
           </Routes>
         </Flex>
+
+        {/* Footer per gli utenti guest */}
+        <Footer />
       </Flex>
     </div>
   );

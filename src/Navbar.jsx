@@ -33,7 +33,7 @@ export default function Navbar({ user, isAdmin, userProfile, onLoginClick, onSig
     <Flex
       as="nav"
       padding="1rem 2rem"
-      backgroundColor="#343a40"
+      backgroundColor="#73818fff"
       borderBottom="1px solid #495057"
       justifyContent="space-between"
       alignItems="center"
@@ -49,8 +49,8 @@ export default function Navbar({ user, isAdmin, userProfile, onLoginClick, onSig
           onClick={() => onNavigate('home')}
         >
           <img src="/logo.png" alt="Logo" style={{ height: '32px', verticalAlign: 'middle' }} />
-          <span className="app-name">
-            Sport News AI
+          <span className="navbar-title" style={{ color: '#012967ff', fontWeight: '600', marginLeft: '0.5rem', fontSize: '1.25rem' }} onClick={onAppNameClick}>
+            Home
           </span>
         </div>
       </Flex>
@@ -61,7 +61,7 @@ export default function Navbar({ user, isAdmin, userProfile, onLoginClick, onSig
         <Button
           variation="link"
           onClick={() => onNavigate('articles')}
-          color={currentPage === 'articles' ? '#ffc107' : '#fff'}
+          color={currentPage === 'articles' ? '#012967ff' : '#fff'}
           fontWeight={currentPage === 'articles' ? '600' : '400'}
         >
           📰 Articoli
@@ -73,7 +73,7 @@ export default function Navbar({ user, isAdmin, userProfile, onLoginClick, onSig
             <Button
               variation="link"
               onClick={() => onNavigate('profile')}
-              color={currentPage === 'profile' ? '#ffc107' : '#fff'}
+              color={currentPage === 'profile' ? '#012967ff' : '#fff'}
               fontWeight={currentPage === 'profile' ? '600' : '400'}
             >
               Profile
@@ -85,23 +85,23 @@ export default function Navbar({ user, isAdmin, userProfile, onLoginClick, onSig
                 <Button
                   variation="link"
                   onClick={() => onNavigate('posts')}
-                  color={currentPage === 'posts' ? '#ffc107' : '#fff'}
+                  color={currentPage === 'posts' ? '#012967ff' : '#fff'}
                   fontWeight={currentPage === 'posts' ? '600' : '400'}
                 >
-                  My Posts
+                  I miei Posts
                 </Button>
                 <Button
                   variation="link"
                   onClick={() => onNavigate('create')}
-                  color={currentPage === 'create' ? '#ffc107' : '#fff'}
+                  color={currentPage === 'create' ? '#012967ff' : '#fff'}
                   fontWeight={currentPage === 'create' ? '600' : '400'}
                 >
-                  Create Post
+                  Crea Post
                 </Button>
                 <Button
                   variation="link"
                   onClick={() => onNavigate('admin')}
-                  color={currentPage === 'admin' ? '#ffc107' : '#dc3545'}
+                  color={currentPage === 'admin' ? '#012967ff' : '#dc3545'}
                   fontWeight={currentPage === 'admin' ? '600' : '400'}
                 >
                   🛠️ Admin
@@ -118,20 +118,11 @@ export default function Navbar({ user, isAdmin, userProfile, onLoginClick, onSig
             <Flex direction="column" alignItems="flex-end">
               <Text 
                 fontSize="small" 
-                color="#adb5bd"
+                color="#012967ff"
                 fontWeight="500"
               >
-                Welcome, {displayName()}
+                Benvenuto, {displayName()}
               </Text>
-              {isAdmin && (
-                <Text 
-                  fontSize="x-small" 
-                  color="#28a745"
-                  fontWeight="400"
-                >
-                  🛡️ Admin
-                </Text>
-              )}
             </Flex>
             <Button 
               variation="outline" 
@@ -140,14 +131,14 @@ export default function Navbar({ user, isAdmin, userProfile, onLoginClick, onSig
               color="#dc3545"
               backgroundColor="transparent"
             >
-              Sign Out
+              Esci
             </Button>
           </>
         ) : (
           <Button 
             variation="primary" 
             onClick={onLoginClick}
-            backgroundColor="#ffc107"
+            backgroundColor="#00693bff"
             color="#000"
             fontWeight="600"
           >

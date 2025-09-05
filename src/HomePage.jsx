@@ -71,26 +71,17 @@ export default function HomePage({ onLoginClick }) {
       maxWidth="1200px"
       margin="0 auto"
     >
-      {/* Header Section */}
-      <Flex 
-        direction="column" 
-        alignItems="center" 
-        textAlign="center"
-        marginBottom="2rem"
-      >
-        <Heading level={1} marginBottom="1rem">Welcome to Sport News AI</Heading>
-      </Flex>
 
       <Divider />
 
       {/* Latest News Section */}
       <Flex direction="column" width="100%" gap="1rem">
-        <Heading level={2} textAlign="center">Latest Sports News</Heading>
+        <Heading level={2} textAlign="center">Ultime notizie</Heading>
         
         {/* Extracted conditional rendering */}
         {(() => {
           if (isLoading) {
-            return <Text textAlign="center">Loading latest news...</Text>;
+            return <Text textAlign="center">Caricando ultime notizie...</Text>;
           }
           if (posts.length > 0) {
             return (
@@ -183,20 +174,10 @@ export default function HomePage({ onLoginClick }) {
           // Fallback content quando non ci sono post
           return (
             <Flex direction="column" gap="1rem" textAlign="center">
-              <Text>No published news available yet.</Text>
+              <Text>Non ci sono notizie pubblicate disponibili.</Text>
               <Text fontSize="small" color="gray">
-                Check back later for the latest sports updates!
+                Torna più tardi per gli ultimi aggiornamenti sportivi!
               </Text>
-              
-              {/* Sample content per mostrare il layout */}
-              <Divider margin="2rem 0" />
-              <Heading level={3}>Coming Soon</Heading>
-              <Flex direction="column" gap="0.5rem">
-                <Text>• Live match updates and scores</Text>
-                <Text>• Player transfer news and rumors</Text>
-                <Text>• Championship schedules and results</Text>
-                <Text>• Expert analysis and predictions</Text>
-              </Flex>
             </Flex>
           );
         })()}

@@ -75,3 +75,34 @@
   z-index: -1;
   pointer-events: none;
 }
+
+/* Stili per l'header */
+.header-title-image {
+  transition: all 0.3s ease;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+}
+
+.header-title-image:hover {
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+}
+
+/* Responsive per l'header */
+@media (max-width: 768px) {
+  .header-title-image {
+    max-height: 45px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-title-image {
+    max-height: 35px;
+  }
+}
+
+/* Aggiorna lo sticky positioning se necessario */
+.sticky-header {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
