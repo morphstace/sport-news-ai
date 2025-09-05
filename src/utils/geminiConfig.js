@@ -1,11 +1,12 @@
 import { GoogleGenAI } from "@google/genai";
+import {secret} from '@aws-amplify/backend';
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const API_KEY = secret('GEMINI_API_KEY');
 
 console.log('API Key loaded:', API_KEY ? 'Yes' : 'No'); // Debug
 
 if (!API_KEY) {
-  throw new Error("VITE_GEMINI_API_KEY non è definita. Controlla il file .env");
+  throw new Error("GEMINI_API_KEY non è definita. Controlla il file .env");
 }
 
 const genAI = new GoogleGenAI({ apiKey: API_KEY });
