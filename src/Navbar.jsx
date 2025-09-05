@@ -1,5 +1,4 @@
 import { Button, Flex, Text } from '@aws-amplify/ui-react';
-import { Link } from 'react-router-dom';
 
 export default function Navbar({ user, isAdmin, userProfile, onLoginClick, onSignOut, onNavigate, currentPage, onAppNameClick }) {
   const displayName = () => {
@@ -70,15 +69,6 @@ export default function Navbar({ user, isAdmin, userProfile, onLoginClick, onSig
         {/* Link per utenti autenticati */}
         {user && (
           <>
-            <Button
-              variation="link"
-              onClick={() => onNavigate('profile')}
-              color={currentPage === 'profile' ? '#012967ff' : '#fff'}
-              fontWeight={currentPage === 'profile' ? '600' : '400'}
-            >
-              Profile
-            </Button>
-            
             {/* Solo gli admin possono vedere le opzioni di gestione post */}
             {isAdmin && (
               <>

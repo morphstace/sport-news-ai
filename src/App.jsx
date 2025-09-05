@@ -3,8 +3,6 @@ import {
   Button,
   Heading,
   Flex,
-  View,
-  Divider,
   Authenticator,
   Alert
 } from '@aws-amplify/ui-react';
@@ -21,7 +19,6 @@ import PostList from './PostList';
 import PostBrowser from './PostBrowser';
 import Navbar from './Navbar';
 import AdminPanel from './AdminPanel';
-import ProfilePage from './Profile'; // Import del nuovo componente
 import Header from './Header'; // Import del nuovo Header
 import Footer from './Footer'; // Import del nuovo Footer
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
@@ -34,7 +31,7 @@ const client = generateClient({
 
 function AuthenticatedApp({signOut, user}) {
   const [userprofiles, setUserProfiles] = useState([]);
-  const [currentPage, setCurrentPage] = useState('profile');
+  const [currentPage, setCurrentPage] = useState('home'); // Cambiato da 'profile' a 'home'
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -163,12 +160,15 @@ function AuthenticatedApp({signOut, user}) {
       navigate('/');
       setCurrentPage('home');
     } else {
-      // Per tutte le altre pagine, naviga verso la home e imposta il currentPage
-      navigate('/');
+      // Per le pagine admin, prima imposta il currentPage
       setCurrentPage(page);
       setError(null);
+      // Se non siamo già sulla home, naviga
+      if (location.pathname !== '/') {
+        navigate('/');
+      }
     }
-  }, [navigate]);
+  }, [navigate, location.pathname]);
 
   // Aggiorna currentPage basato sull'URL quando cambia la location
   useEffect(() => {
@@ -178,12 +178,13 @@ function AuthenticatedApp({signOut, user}) {
       // Mantieni il currentPage esistente quando visualizzi un post
       // In questo modo la navbar mostrerà ancora la pagina da cui provieni
     } else if (location.pathname === '/') {
-      // Solo se currentPage non è già impostato o è 'articles'
-      if (currentPage === 'articles' || !currentPage) {
-        setCurrentPage('profile');
+      // NON sovrascrivere il currentPage se è già stato impostato
+      // da handleNavigate per le pagine admin
+      if (currentPage === 'articles') {
+        setCurrentPage('home');
       }
     }
-  }, [location.pathname, currentPage]);
+  }, [location.pathname]); // Rimuovi currentPage dalle dipendenze
 
   // Loading state
   if (loading) {
@@ -257,11 +258,10 @@ function AuthenticatedApp({signOut, user}) {
   );
 }
 
-// Componente separato per il rendering delle pagine
+// Componente separato per il rendering delle pagine - SEMPLIFICATO
 function PageRenderer({ 
   currentPage, 
   isAdmin, 
-  currentUserProfile, 
   userprofiles, 
   editingPost,
   onEditPost,
@@ -272,14 +272,8 @@ function PageRenderer({
   signOut
 }) {
   switch (currentPage) {
-    case 'home':
-      return <HomePage onLoginClick={() => {}} />;
-    
-    case 'articles':
-      return <PostBrowser onBack={() => onNavigate('home')} />;
-    
     case 'create':
-      if (!isAdmin) return <AccessDenied onBack={() => onNavigate('profile')} />;
+      if (!isAdmin) return <AccessDenied onBack={() => onNavigate('home')} />;
       return (
         <PostEditor
           onBack={onBackFromEditor}
@@ -289,10 +283,10 @@ function PageRenderer({
       );
     
     case 'posts':
-      if (!isAdmin) return <AccessDenied onBack={() => onNavigate('profile')} />;
+      if (!isAdmin) return <AccessDenied onBack={() => onNavigate('home')} />;
       return (
         <PostList
-          onBack={() => onNavigate('profile')}
+          onBack={() => onNavigate('home')}
           onCreateNew={onCreateNew}
           onEditPost={onEditPost}
           signOut={signOut}
@@ -300,7 +294,7 @@ function PageRenderer({
       );
     
     case 'admin':
-      if (!isAdmin) return <AccessDenied onBack={() => onNavigate('profile')} />;
+      if (!isAdmin) return <AccessDenied onBack={() => onNavigate('home')} />;
       return (
         <AdminPanel
           userProfiles={userprofiles}
@@ -309,8 +303,12 @@ function PageRenderer({
         />
       );
     
+    case 'articles':
+      return <PostBrowser onBack={() => onNavigate('home')} />;
+
+    // Caso default: sempre HomePage
     default:
-      return <ProfilePage isAdmin={isAdmin} currentUserProfile={currentUserProfile} onNavigate={onNavigate} />;
+      return <HomePage onLoginClick={() => {}} />;
   }
 }
 
@@ -322,7 +320,7 @@ function AccessDenied({ onBack }) {
         <strong>Accesso Negato</strong><br />
         Non hai i permessi per accedere a questa sezione.
       </Alert>
-      <Button onClick={onBack}>Torna al Profilo</Button>
+      <Button onClick={onBack}>Torna alla Home</Button>
     </Flex>
   );
 }
