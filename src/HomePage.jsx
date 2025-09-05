@@ -72,8 +72,6 @@ export default function HomePage({ onLoginClick }) {
       margin="0 auto"
     >
 
-      <Divider />
-
       {/* Latest News Section */}
       <Flex direction="column" width="100%" gap="1rem">
         <Heading level={2} textAlign="center">Ultime notizie</Heading>
