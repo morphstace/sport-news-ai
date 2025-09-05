@@ -10,6 +10,7 @@ import {
 } from '@aws-amplify/ui-react';
 import {Amplify} from 'aws-amplify';
 import "@aws-amplify/ui-react/styles.css";
+import './App.css'; // Importa il CSS personalizzato
 import { generateClient } from 'aws-amplify/data';
 import { fetchUserAttributes, getCurrentUser } from 'aws-amplify/auth';
 import { checkIfUserIsAdmin } from './utils/authUtils';
@@ -20,6 +21,7 @@ import PostList from './PostList';
 import PostBrowser from './PostBrowser';
 import Navbar from './Navbar';
 import AdminPanel from './AdminPanel';
+import ProfilePage from './Profile'; // Import del nuovo componente
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import PostPage from './PostPage.jsx';
 
@@ -205,40 +207,45 @@ function AuthenticatedApp({signOut, user}) {
   }
 
   return (
-    <Flex direction="column" minHeight="100vh">
-      <Navbar 
-        user={user}
-        isAdmin={isAdmin}
-        userProfile={currentUserProfile}
-        onSignOut={signOut}
-        onNavigate={handleNavigate}
-        currentPage={location.pathname === '/articles' ? 'articles' : currentPage}
-        onLoginClick={() => {}}
-        onAppNameClick={() => handleNavigate('home')}
-      />
+    <div style={{ position: 'relative', minHeight: '100vh' }}>
+      {/* Background pattern */}
+      <div className="app-background"></div>
+      
+      <Flex direction="column" minHeight="100vh">
+        <Navbar 
+          user={user}
+          isAdmin={isAdmin}
+          userProfile={currentUserProfile}
+          onSignOut={signOut}
+          onNavigate={handleNavigate}
+          currentPage={location.pathname === '/articles' ? 'articles' : currentPage}
+          onLoginClick={() => {}}
+          onAppNameClick={() => handleNavigate('home')}
+        />
 
-      <Flex flex="1">
-        <Routes>
-          <Route path="/" element={
-            <PageRenderer 
-              currentPage={currentPage}
-              isAdmin={isAdmin}
-              currentUserProfile={currentUserProfile}
-              userprofiles={userprofiles}
-              editingPost={editingPost}
-              onEditPost={handleEditPost}
-              onCreateNew={handleCreateNew}
-              onBackFromEditor={handleBackFromEditor}
-              onNavigate={handleNavigate}
-              refreshUserProfiles={refreshUserProfiles}
-              signOut={signOut}
-            />
-          } />
-          <Route path="/post/:postId" element={<PostPage />} />
-          <Route path="/articles" element={<PostBrowser onBack={() => handleNavigate('home')} />} />
-        </Routes>
+        <Flex flex="1">
+          <Routes>
+            <Route path="/" element={
+              <PageRenderer 
+                currentPage={currentPage}
+                isAdmin={isAdmin}
+                currentUserProfile={currentUserProfile}
+                userprofiles={userprofiles}
+                editingPost={editingPost}
+                onEditPost={handleEditPost}
+                onCreateNew={handleCreateNew}
+                onBackFromEditor={handleBackFromEditor}
+                onNavigate={handleNavigate}
+                refreshUserProfiles={refreshUserProfiles}
+                signOut={signOut}
+              />
+            } />
+            <Route path="/post/:postId" element={<PostPage />} />
+            <Route path="/articles" element={<PostBrowser onBack={() => handleNavigate('home')} />} />
+          </Routes>
+        </Flex>
       </Flex>
-    </Flex>
+    </div>
   );
 }
 
@@ -312,100 +319,6 @@ function AccessDenied({ onBack }) {
   );
 }
 
-// Componente per la pagina profilo
-function ProfilePage({ isAdmin, currentUserProfile, onNavigate }) {
-  return (
-    <Flex
-      className='App'
-      justifyContent='center'
-      alignItems="center"
-      direction="column"
-      width="70%"
-      margin="0 auto"
-      padding="2rem"
-    >
-      <Heading level={1}>My Profile</Heading>
-      
-      <Alert 
-        variation={isAdmin ? 'success' : 'info'}
-        margin="1rem 0"
-        hasIcon={true}
-      >
-        <strong>Ruolo:</strong> {isAdmin ? '🛡️ Amministratore' : '👤 Utente'}
-      </Alert>
-
-      <Divider />
-      
-      {isAdmin ? (
-        <AdminActions onNavigate={onNavigate} />
-      ) : (
-        <UserWelcome />
-      )}
-      
-      <Divider />
-      
-      {currentUserProfile ? (
-        <ProfileInfo profile={currentUserProfile} isAdmin={isAdmin} />
-      ) : (
-        <Alert variation="warning">
-          Profilo non trovato. Prova a ricaricare la pagina.
-        </Alert>
-      )}
-    </Flex>
-  );
-}
-
-// Componente per le azioni admin
-function AdminActions({ onNavigate }) {
-  return (
-    <Flex gap="1rem" margin="1rem 0" wrap="wrap" justifyContent="center">
-      <Button variation='primary' onClick={() => onNavigate('create')}>
-        Create New Post
-      </Button>
-      <Button variation="outline" onClick={() => onNavigate('posts')}>
-        Manage Posts
-      </Button>
-      <Button variation="destructive" onClick={() => onNavigate('admin')}>
-        🛠️ Admin Panel
-      </Button>
-    </Flex>
-  );
-}
-
-// Componente per il messaggio di benvenuto utente
-function UserWelcome() {
-  return (
-    <Alert variation="info" margin="1rem 0">
-      <strong>Benvenuto!</strong><br />
-      Come utente puoi leggere tutti i post pubblicati. Solo gli amministratori possono creare e modificare contenuti.
-    </Alert>
-  );
-}
-
-// Componente per le informazioni del profilo
-function ProfileInfo({ profile, isAdmin }) {
-  return (
-    <Flex
-      direction="column"
-      justifyContent="center"
-      alignItems="center"
-      gap="1rem"
-      border="1px solid #ccc"
-      padding="2rem"
-      borderRadius="8px"
-      margin="2rem 0"
-      className="box"
-      backgroundColor="var(--amplify-colors-background-secondary)"
-    >
-      <Heading level="3">{profile.name}</Heading>
-      <View><strong>Email:</strong> {profile.email}</View>
-      <View><strong>Nome:</strong> {profile.firstName || 'N/A'}</View>
-      <View><strong>Cognome:</strong> {profile.lastName || 'N/A'}</View>
-      <View><strong>Ruolo:</strong> {isAdmin ? 'Amministratore' : 'Utente'}</View>
-    </Flex>
-  );
-}
-
 export default function App() {
   const [showLogin, setShowLogin] = useState(false);
   const location = useLocation();
@@ -423,73 +336,83 @@ export default function App() {
 
   if (showLogin) {
     return (
-      <Authenticator
-        signUpAttributes={['email', 'given_name', 'family_name']}
-        formFields={{
-          signUp: {
-            given_name: {
-              label: 'Nome *',
-              placeholder: 'Inserisci il tuo nome',
-              isRequired: true,
-              order: 1,
-              inputProps: { autoComplete: 'given-name' }
-            },
-            family_name: {
-              label: 'Cognome *',
-              placeholder: 'Inserisci il tuo cognome', 
-              isRequired: true,
-              order: 2,
-              inputProps: { autoComplete: 'family-name' }
-            },
-            email: {
-              label: 'Email *',
-              placeholder: 'Inserisci la tua email',
-              isRequired: true,
-              order: 3,
-              inputProps: { autoComplete: 'email' }
-            },
-            password: {
-              label: 'Password *',
-              placeholder: 'Inserisci una password sicura',
-              isRequired: true,
-              order: 4,
-              inputProps: { autoComplete: 'new-password' }
-            },
-            confirm_password: {
-              label: 'Conferma Password *',
-              placeholder: 'Conferma la password',
-              isRequired: true,
-              order: 5,
-              inputProps: { autoComplete: 'new-password' }
+      <div style={{ position: 'relative', minHeight: '100vh' }}>
+        {/* Background pattern */}
+        <div className="app-background"></div>
+        
+        <Authenticator
+          signUpAttributes={['email', 'given_name', 'family_name']}
+          formFields={{
+            signUp: {
+              given_name: {
+                label: 'Nome *',
+                placeholder: 'Inserisci il tuo nome',
+                isRequired: true,
+                order: 1,
+                inputProps: { autoComplete: 'given-name' }
+              },
+              family_name: {
+                label: 'Cognome *',
+                placeholder: 'Inserisci il tuo cognome', 
+                isRequired: true,
+                order: 2,
+                inputProps: { autoComplete: 'family-name' }
+              },
+              email: {
+                label: 'Email *',
+                placeholder: 'Inserisci la tua email',
+                isRequired: true,
+                order: 3,
+                inputProps: { autoComplete: 'email' }
+              },
+              password: {
+                label: 'Password *',
+                placeholder: 'Inserisci una password sicura',
+                isRequired: true,
+                order: 4,
+                inputProps: { autoComplete: 'new-password' }
+              },
+              confirm_password: {
+                label: 'Conferma Password *',
+                placeholder: 'Conferma la password',
+                isRequired: true,
+                order: 5,
+                inputProps: { autoComplete: 'new-password' }
+              }
             }
-          }
-        }}
-      >
-        {({ signOut, user }) => (
-          user ? <AuthenticatedApp signOut={signOut} user={user} /> : <div>Loading...</div>
-        )}
-      </Authenticator>
+          }}
+        >
+          {({ signOut, user }) => (
+            user ? <AuthenticatedApp signOut={signOut} user={user} /> : <div>Loading...</div>
+          )}
+        </Authenticator>
+      </div>
     );
   }
 
   return (
-    <Flex direction="column" minHeight="100vh">
-      {/* Navbar sempre visibile per gli utenti non autenticati */}
-      <Navbar 
-        user={null}
-        userRole="guest"
-        onLoginClick={handleShowLogin}
-        onSignOut={() => {}}
-        onNavigate={handleNavigateGuest}
-        currentPage={location.pathname === '/articles' ? 'articles' : 'home'}
-      />
-      <Flex flex="1">
-        <Routes>
-          <Route path="/" element={<HomePage onLoginClick={handleShowLogin} />} />
-          <Route path="/articles" element={<PostBrowser onBack={() => navigate('/')} />} />
-          <Route path="/post/:postId" element={<PostPage />} />
-        </Routes>
+    <div style={{ position: 'relative', minHeight: '100vh' }}>
+      {/* Background pattern */}
+      <div className="app-background"></div>
+      
+      <Flex direction="column" minHeight="100vh">
+        {/* Navbar sempre visibile per gli utenti non autenticati */}
+        <Navbar 
+          user={null}
+          userRole="guest"
+          onLoginClick={handleShowLogin}
+          onSignOut={() => {}}
+          onNavigate={handleNavigateGuest}
+          currentPage={location.pathname === '/articles' ? 'articles' : 'home'}
+        />
+        <Flex flex="1">
+          <Routes>
+            <Route path="/" element={<HomePage onLoginClick={handleShowLogin} />} />
+            <Route path="/articles" element={<PostBrowser onBack={() => navigate('/')} />} />
+            <Route path="/post/:postId" element={<PostPage />} />
+          </Routes>
+        </Flex>
       </Flex>
-    </Flex>
+    </div>
   );
 }
