@@ -25,9 +25,9 @@ const schema = a.schema({
       imageUrl: a.string(),
     })
     .authorization((allow) => [
-      allow.authenticated().to(['read']), // Utenti autenticati possono solo leggere
-      allow.group('admins').to(['create', 'read', 'update', 'delete']), // Solo gli admin possono fare tutto
-      allow.publicApiKey().to(['read']) // Lettura pubblica
+      allow.authenticated().to(['read']),
+      allow.group('admins').to(['create', 'read', 'update', 'delete']),
+      allow.publicApiKey().to(['read'])
     ]),
 });
 

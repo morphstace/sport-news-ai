@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/data';
-import { uploadData, getUrl } from 'aws-amplify/storage';
+import { uploadData } from 'aws-amplify/storage';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { checkIfUserIsAdmin } from './utils/authUtils';
-import { correctText, improveText, generateTags, summarizeText } from './utils/geminiConfig';
+import { correctText, generateTags, summarizeText } from './utils/geminiConfig';
 import CrawlerPanel from './CrawlerPanel';
 import S3Image from './components/S3Image';
 import { 
@@ -34,17 +34,14 @@ function PostEditor({ onBack, editingPost }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingPermissions, setCheckingPermissions] = useState(true);
 
-  // Aggiungi stato per l'AI
+  // AI state
   const [aiLoading, setAiLoading] = useState({
     correctTitle: false,
     correctContent: false,
-    improveTitle: false,
-    improveContent: false,
     generateTags: false,
     summarizeContent: false
   });
   
-  // Modifica lo stato per gestire il confronto AI senza Modal
   const [showAiComparison, setShowAiComparison] = useState(false);
   const [aiComparison, setAiComparison] = useState({
     original: '',
@@ -63,7 +60,6 @@ function PostEditor({ onBack, editingPost }) {
       setIsAdmin(adminStatus);
       
       if (!adminStatus) {
-        // Se non è admin, torna indietro
         setTimeout(() => {
           onBack();
         }, 3000);
@@ -120,19 +116,14 @@ function PostEditor({ onBack, editingPost }) {
       }
 
       if (editingPost?.id) {
-        // Aggiorna post esistente
-        const result = await client.models.Post.update({
+        await client.models.Post.update({
           id: editingPost.id,
           ...postData
         });
-        console.log('✅ Post aggiornato:', result);
       } else {
-        // Crea nuovo post
-        const result = await client.models.Post.create(postData);
-        console.log('✅ Post creato:', result);
+        await client.models.Post.create(postData);
       }
 
-      // Torna alla lista dei post
       onBack();
       
     } catch (error) {
@@ -152,39 +143,13 @@ function PostEditor({ onBack, editingPost }) {
   };
 
   const handleCrawledArticle = (article) => {
-    const autoTags = generateAutoTags(article);
-    
     setFormData(prev => ({
       ...prev,
       title: article.title,
       content: article.content,
-      tags: autoTags
+      tags: article.tags || ''
     }));
     setShowCrawler(false);
-  };
-
-  const generateAutoTags = (article) => {
-    const tags = [];
-    
-    if (article.source) {
-      if (article.source.includes('gazzetta')) tags.push('Gazzetta dello Sport');
-      if (article.source.includes('corriere')) tags.push('Corriere dello Sport');
-      if (article.source.includes('tuttosport')) tags.push('Tuttosport');
-    }
-    
-    const content = (article.title + ' ' + article.content).toLowerCase();
-    
-    if (content.includes('calcio') || content.includes('serie a')) tags.push('Calcio');
-    if (content.includes('juventus') || content.includes('juve')) tags.push('Juventus');
-    if (content.includes('inter') || content.includes('nerazzurr')) tags.push('Inter');
-    if (content.includes('milan') || content.includes('rossoneri')) tags.push('Milan');
-    if (content.includes('roma')) tags.push('Roma');
-    if (content.includes('napoli')) tags.push('Napoli');
-    if (content.includes('basket')) tags.push('Basket');
-    if (content.includes('tennis')) tags.push('Tennis');
-    if (content.includes('formula 1') || content.includes('f1')) tags.push('Formula 1');
-    
-    return tags.join(', ');
   };
 
   const handleImageUpload = async (event) => {
@@ -205,7 +170,6 @@ function PostEditor({ onBack, editingPost }) {
 
     try {
       const fileExtension = file.name.split('.').pop();
-      // Usa public/posts/ per la cartella
       const fileName = `public/posts/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExtension}`;
 
       const result = await uploadData({
@@ -217,7 +181,6 @@ function PostEditor({ onBack, editingPost }) {
         }
       }).result;
 
-      // Salva solo la chiave S3
       setFormData(prev => ({
         ...prev,
         imageUrl: result.key
@@ -238,25 +201,6 @@ function PostEditor({ onBack, editingPost }) {
     }));
   };
 
-  const suggestedTags = [
-    'Calcio', 'Serie A', 'Champions League', 'Europa League',
-    'Juventus', 'Inter', 'Milan', 'Roma', 'Napoli', 'Lazio',
-    'Basket', 'Tennis', 'Formula 1', 'MotoGP', 'Ciclismo',
-    'Olimpiadi', 'Nazionale', 'Mercato'
-  ];
-
-  const addSuggestedTag = (tag) => {
-    const currentTags = formData.tags.split(',').map(t => t.trim()).filter(t => t);
-    if (!currentTags.includes(tag)) {
-      const newTags = [...currentTags, tag].join(', ');
-      setFormData(prev => ({
-        ...prev,
-        tags: newTags
-      }));
-    }
-  };
-
-  // Funzioni AI integrate
   const handleAiAction = async (action, field) => {
     const fieldValue = formData[field];
     if (!fieldValue?.trim()) {
@@ -271,28 +215,24 @@ function PostEditor({ onBack, editingPost }) {
       let result;
       if (action === 'correct') {
         result = await correctText(fieldValue);
-      } else if (action === 'improve') {
-        result = await improveText(fieldValue, field === 'title' ? 'title' : 'article');
       } else if (action === 'summarize' && field === 'content') {
-        // Implementa la funzione di sintesi se necessario
         result = await summarizeText(fieldValue);
       }
-      
 
       if (result && result !== fieldValue) {
         setAiComparison({
           original: fieldValue,
           improved: result,
-          type: action === 'correct' ? 'Correzione' : 'Miglioramento',
+          type: action === 'correct' ? 'Correzione' : 'Riassunto',
           field: field
         });
         setShowAiComparison(true);
       } else {
-        alert(`Il ${field === 'title' ? 'titolo' : 'contenuto'} non necessita ${action === 'correct' ? 'correzioni' : 'miglioramenti'}`);
+        alert(`Il ${field === 'title' ? 'titolo' : 'contenuto'} non necessita modifiche`);
       }
     } catch (error) {
       console.error(`Errore ${action}:`, error);
-      alert(`Errore nell'${action === 'correct' ? 'correzione' : 'miglioramento'}: ${error.message}`);
+      alert(`Errore: ${error.message}`);
     } finally {
       setAiLoading(prev => ({ ...prev, [loadingKey]: false }));
     }
@@ -383,7 +323,7 @@ function PostEditor({ onBack, editingPost }) {
         </Flex>
       </Flex>
 
-      {/* AI Comparison Section - Sostituisce il Modal */}
+      {/* AI Comparison */}
       {showAiComparison && (
         <Card padding="1.5rem" marginBottom="1rem" border="2px solid #007bff" backgroundColor="#f8f9ff">
           <Heading level={4} marginBottom="1rem">
@@ -446,7 +386,7 @@ function PostEditor({ onBack, editingPost }) {
         </View>
       )}
 
-      {/* AI Tools Panel */}
+      {/* AI Tools */}
       <View 
         padding="1rem" 
         border="1px solid #e0e0e0" 
@@ -482,24 +422,6 @@ function PostEditor({ onBack, editingPost }) {
             isDisabled={!formData.content?.trim() || Object.values(aiLoading).some(l => l)}
           >
             📝 Riassumi Contenuto
-          </Button>
-          <Button
-            size="small"
-            variation="primary"
-            onClick={() => handleAiAction('improve', 'title')}
-            isLoading={aiLoading.improveTitle}
-            isDisabled={!formData.title?.trim() || Object.values(aiLoading).some(l => l)}
-          >
-            ✨ Migliora Titolo
-          </Button>
-          <Button
-            size="small"
-            variation="primary"
-            onClick={() => handleAiAction('improve', 'content')}
-            isLoading={aiLoading.improveContent}
-            isDisabled={!formData.content?.trim() || Object.values(aiLoading).some(l => l)}
-          >
-            ✨ Migliora Contenuto
           </Button>
           <Button
             size="small"
@@ -552,38 +474,13 @@ function PostEditor({ onBack, editingPost }) {
             />
           </View>
 
-          <View>
-            <TextField
-              label="Tags"
-              name="tags"
-              value={formData.tags}
-              onChange={handleInputChange}
-              placeholder="Calcio, Serie A, Juventus..."
-            />
-            
-            <View marginTop="0.5rem">
-              <View marginBottom="0.5rem" fontSize="0.875rem" fontWeight="bold">
-                Tag suggeriti:
-              </View>
-              <Flex wrap="wrap" gap="0.25rem">
-                {suggestedTags.map(tag => (
-                  <Button
-                    key={tag}
-                    size="small"
-                    variation={formData.tags.includes(tag) ? "primary" : "outline"}
-                    onClick={() => addSuggestedTag(tag)}
-                    style={{
-                      fontSize: '0.75rem',
-                      padding: '0.25rem 0.5rem',
-                      borderRadius: '1rem'
-                    }}
-                  >
-                    {tag}
-                  </Button>
-                ))}
-              </Flex>
-            </View>
-          </View>
+          <TextField
+            label="Tags"
+            name="tags"
+            value={formData.tags}
+            onChange={handleInputChange}
+            placeholder="Calcio, Serie A, Juventus..."
+          />
 
           <View>
             <View marginBottom="1rem" fontSize="1rem" fontWeight="bold">

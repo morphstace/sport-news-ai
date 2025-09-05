@@ -13,8 +13,6 @@ import {
   Divider,
   Card,
   Button,
-  useTheme,
-  Text
 } from '@aws-amplify/ui-react';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { checkIfUserIsAdmin } from './utils/authUtils';
@@ -25,9 +23,6 @@ export default function AdminPanel({ userProfiles, onRefresh }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [deletingUserId, setDeletingUserId] = useState(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [userToDelete, setUserToDelete] = useState(null);
-  const { tokens } = useTheme();
 
   useEffect(() => {
     const verifyAdmin = async () => {
@@ -58,7 +53,6 @@ export default function AdminPanel({ userProfiles, onRefresh }) {
   const handleDeleteConfirm = async (user) => {
     if (!user) return;
 
-    // Conferma con dialog nativo del browser
     const confirmDelete = window.confirm(
       `Sei sicuro di voler eliminare l'utente ${user.name || user.email}?\n\n` +
       `⚠️ ATTENZIONE: Questa azione è irreversibile. Tutti i dati dell'utente verranno eliminati permanentemente.`
@@ -79,11 +73,6 @@ export default function AdminPanel({ userProfiles, onRefresh }) {
     } finally {
       setDeletingUserId(null);
     }
-  };
-
-  const handleDeleteCancel = () => {
-    setShowDeleteModal(false);
-    setUserToDelete(null);
   };
 
   if (loading) {

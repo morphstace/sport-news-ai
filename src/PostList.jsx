@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { useNavigate } from 'react-router-dom';
 import { checkIfUserIsAdmin } from './utils/authUtils';
-import S3Image from './components/S3Image'; // Aggiungi questa importazione
+import S3Image from './components/S3Image';
 import {
     View,
     Text,
@@ -24,17 +24,14 @@ export default function PostList({ onBack, onCreateNew, onEditPost, signOut }) {
     const [error, setError] = useState('');
     const [currentUser, setCurrentUser] = useState(null);
     const [isAdmin, setIsAdmin] = useState(false);
-    const navigate = useNavigate();
 
     useEffect(() => {
         const initialize = async () => {
             try {
                 const user = await getCurrentUser();
                 setCurrentUser(user);
-                
-                // Verifica se è admin (puoi personalizzare questa logica)
-                setIsAdmin(false); // o la tua logica per verificare admin
-                
+                const adminStatus = await checkIfUserIsAdmin();
+                setIsAdmin(adminStatus);
                 await fetchPosts();
             } catch (error) {
                 console.error('Error initializing:', error);
@@ -49,7 +46,7 @@ export default function PostList({ onBack, onCreateNew, onEditPost, signOut }) {
         const checkAdmin = async () => {
             const adminStatus = await checkIfUserIsAdmin();
             if (!adminStatus) {
-                onBack(); // Torna indietro se non è admin
+                onBack();
             }
         };
         checkAdmin();
@@ -169,7 +166,7 @@ export default function PostList({ onBack, onCreateNew, onEditPost, signOut }) {
                                 
                                 {/* Pulsanti azioni */}
                                 <Flex gap="0.5rem">
-                                    {(isAdmin || (currentUser && post.authorId === currentUser.userId)) && (
+                                    {(isAdmin) && (
                                         <>
                                             <Button
                                                 size="small"

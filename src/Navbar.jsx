@@ -78,7 +78,7 @@ export default function Navbar({ user, isAdmin, userProfile, onLoginClick, onSig
                   color={currentPage === 'posts' ? '#012967ff' : '#fff'}
                   fontWeight={currentPage === 'posts' ? '600' : '400'}
                 >
-                  I miei Posts
+                  Gestione Posts
                 </Button>
                 <Button
                   variation="link"

@@ -258,7 +258,6 @@ function AuthenticatedApp({signOut, user}) {
   );
 }
 
-// Componente separato per il rendering delle pagine - SEMPLIFICATO
 function PageRenderer({ 
   currentPage, 
   isAdmin, 
@@ -306,13 +305,11 @@ function PageRenderer({
     case 'articles':
       return <PostBrowser onBack={() => onNavigate('home')} />;
 
-    // Caso default: sempre HomePage
     default:
       return <HomePage onLoginClick={() => {}} />;
   }
 }
 
-// Componente per l'accesso negato
 function AccessDenied({ onBack }) {
   return (
     <Flex justifyContent="center" alignItems="center" minHeight="50vh" direction="column" gap="1rem">
@@ -416,7 +413,6 @@ export default function App() {
       <div className="app-background"></div>
       
       <Flex direction="column" minHeight="100vh">
-        {/* Header con immagine titolo anche per i guest */}
         <Header onClick={() => navigate('/')} />
         
         <Navbar 
@@ -436,7 +432,6 @@ export default function App() {
           </Routes>
         </Flex>
 
-        {/* Footer per gli utenti guest */}
         <Footer />
       </Flex>
     </div>

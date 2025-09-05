@@ -21,7 +21,6 @@ function CrawlerPanel({ onArticleCrawled, skipSave = false }) {
       setResult(article);
       
       if (!skipSave) {
-        // Salva come bozza solo se non è in modalità skip
         const savedPost = await client.graphql({
           query: `
             mutation CreatePost($input: CreatePostInput!) {

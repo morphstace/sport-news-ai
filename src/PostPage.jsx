@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import { Card, Heading, Text, Badge, Flex, Button } from '@aws-amplify/ui-react';
-import S3Image from './components/S3Image'; // Aggiungi questa importazione
+import S3Image from './components/S3Image';
 
 const client = generateClient({ authMode: "apiKey" });
 
