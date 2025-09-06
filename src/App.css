@@ -60,7 +60,7 @@
 
 /* Stile alternativo con pattern diagonale */
 .app-background-diagonal {
-  background-image: url('/logo.png');
+  background-image: url('./logo.png');
   background-size: 100px 100px;
   background-repeat: repeat;
   background-position: 0 0;
