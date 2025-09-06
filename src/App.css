@@ -43,7 +43,7 @@
 
 /* Background pattern con logo */
 .app-background {
-  background-image: url('./public/logo.png'); /* Sostituisci con il path del tuo logo */
+  background-image: url('./assets/logo.png'); /* Sostituisci con il path del tuo logo */
   background-size: 150px 150px; /* Dimensioni del logo ripetuto */
   background-repeat: repeat;
   background-position: 0 0;
