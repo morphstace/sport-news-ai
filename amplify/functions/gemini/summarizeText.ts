@@ -1,0 +1,1 @@
+export { summarizeTextHandler as handler } from './handler';

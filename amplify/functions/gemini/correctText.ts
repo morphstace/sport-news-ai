@@ -1,0 +1,1 @@
+export { correctTextHandler as handler } from './handler';

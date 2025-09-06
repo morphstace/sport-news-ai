@@ -1,29 +1,11 @@
-import { GoogleGenAI } from "@google/genai";
-import {secret} from '@aws-amplify/backend';
+import { generateClient } from 'aws-amplify/data';
 
-//const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-
-const genAI = new GoogleGenAI({ apiKey: secret('VITE_GEMINI_API_KEY') });
+const client = generateClient();
 
 export const correctText = async (text) => {
   try {
-    const prompt = `
-Correggi questo testo in italiano mantenendo il significato originale.
-Correggi solo errori grammaticali, di ortografia e di punteggiatura.
-Non modificare il contenuto o il tono del testo.
-
-Testo da correggere:
-${text}
-
-Restituisci solo il testo corretto senza spiegazioni aggiuntive.
-`;
-
-    const response = await genAI.models.generateContent({
-      model: "gemini-2.5-flash-lite",
-      contents: prompt
-    });
-    
-    return response.text.trim();
+    const response = await client.queries.correctText({ text });
+    return response.data;
   } catch (error) {
     console.error('Errore nella correzione del testo:', error);
     throw error;
@@ -32,24 +14,8 @@ Restituisci solo il testo corretto senza spiegazioni aggiuntive.
 
 export const generateTags = async (title, content) => {
   try {
-    const prompt = `
-Analizza questo articolo sportivo e genera tag pertinenti in italiano.
-Concentrati su sport, squadre, giocatori, competizioni e categorie menzionate.
-Restituisci massimo 8 tag separati da virgole.
-
-Titolo: ${title}
-
-Contenuto: ${content}
-
-Restituisci solo i tag separati da virgole, senza spiegazioni aggiuntive.
-`;
-
-    const response = await genAI.models.generateContent({
-      model: "gemini-2.5-flash-lite",
-      contents: prompt
-    });
-    
-    return response.text.trim();
+    const response = await client.queries.generateTags({ title, content });
+    return response.data;
   } catch (error) {
     console.error('Errore nella generazione dei tag:', error);
     throw error;
@@ -58,23 +24,8 @@ Restituisci solo i tag separati da virgole, senza spiegazioni aggiuntive.
 
 export const summarizeText = async (text) => {
   try {
-    const prompt = `
-Riassumi questo testo sportivo in italiano mantenendo i punti chiave.
-Il riassunto deve essere conciso, chiaro e coinvolgente.
-Massimo 1000 caratteri, minimo 500 caratteri.
-
-Testo da riassumere:
-${text}
-
-Restituisci solo il riassunto senza spiegazioni aggiuntive.
-`;
-
-    const response = await genAI.models.generateContent({
-      model: "gemini-2.5-flash-lite",
-      contents: prompt
-    });
-    
-    return response.text.trim();
+    const response = await client.queries.summarizeText({ text });
+    return response.data;
   } catch (error) {
     console.error('Errore nel riassunto del testo:', error);
     throw error;
