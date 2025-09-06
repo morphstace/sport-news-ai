@@ -430,7 +430,7 @@ function PostEditor({ onBack, editingPost }) {
             isLoading={aiLoading.generateTags}
             isDisabled={(!formData.title?.trim() && !formData.content?.trim()) || Object.values(aiLoading).some(l => l)}
           >
-            🏷️ Genera Tag AI
+            🏷️ Genera Tags
           </Button>
         </Flex>
       </View>
