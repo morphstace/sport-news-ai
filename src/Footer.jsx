@@ -60,7 +60,7 @@ export default function Footer() {
           }}
         >
           <img 
-            src="/public/github-mark.svg"
+            src="/github-mark.svg"
             alt="GitHub" 
             style={{ width: '16px', height: '16px' }} 
           />

@@ -32,7 +32,7 @@ export default function Header({ onClick }) {
         }}
       >
         <Image
-          src="/public/header.png" // Sostituisci con il path della tua immagine
+          src="/header.png"
           alt="Sport News AI - Titolo"
           width="auto"
           height="60px"
