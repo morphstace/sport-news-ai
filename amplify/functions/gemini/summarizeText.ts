@@ -12,7 +12,7 @@ export const handler: Schema['summarizeText']['functionHandler'] = async (event)
     const prompt = `
 Riassumi questo testo sportivo in italiano mantenendo i punti chiave.
 Il riassunto deve essere conciso, chiaro e coinvolgente.
-Massimo 1000 caratteri, minimo 500 caratteri.
+Il riassunto deve avere una lunghezza compresa tra 500 e 1000 caratteri.
 
 Testo da riassumere:
 ${text}
